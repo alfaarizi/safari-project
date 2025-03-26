@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "my_safari_project"
+version = "0.1.0"
+description = "An African safari management game in Pygame"
+authors = ["se3hp5@inf.elte.hu"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+pygame = "^2.1.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^7.2"
+coverage = "^7.2"
+
+[tool.poetry.scripts]
+my-safari-game = "src.main:run_game" # we can run poetry run my-safari-game to start our game if we define def run_game(): ... in src/main.py
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

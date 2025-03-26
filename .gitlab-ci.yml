@@ -1,0 +1,10 @@
+stages:
+  - test
+
+test_job:
+  stage: test
+  image: python:3.10
+  script:
+    - pip install poetry
+    - poetry install
+    - poetry run pytest --cov=src --cov-report=term

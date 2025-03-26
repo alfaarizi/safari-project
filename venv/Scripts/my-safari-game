@@ -1,0 +1,6 @@
+#!E:\6th sem\Software technology\Safari\venv\Scripts\python.exe
+import sys
+from src.main import run_game
+
+if __name__ == '__main__':
+    sys.exit(run_game())
