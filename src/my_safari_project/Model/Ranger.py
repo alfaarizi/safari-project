@@ -1,6 +1,5 @@
 import random
-from Animal import Animal
-
+from animal import Animal
 
 class Position:
     def __init__(self, x: int, y: int):

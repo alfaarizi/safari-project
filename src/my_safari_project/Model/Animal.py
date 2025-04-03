@@ -1,27 +1,27 @@
-import math
 from pygame.math import Vector2
 from abc import ABC
-from typing import List, TypeVar, Generic, Union, Optional
+from typing import List, TypeVar, Generic, Union, Optional, TYPE_CHECKING
 
-from Pond import Pond
-from Herbivore import Herbivore
-from Plant import Plant
-from Board import Board
-from Field import Field
+if TYPE_CHECKING:
+    from plant import Plant
+    from herbivore import Herbivore
+    from pond import Pond
+    from board import Board
+    from field import Field
 
-T = TypeVar('T', bound=Union[Plant, Herbivore])
+T = TypeVar('T', bound=Union["Plant", "Herbivore"])
 
 class Animal(ABC, Generic[T]):
     """Generic class for Animal that consumes T"""
     def __init__(
-            self, 
-            group_id: int, 
-            position: Vector2, 
-            speed: float,
-            value: int, 
-            age: int, 
-            lifespan: int
-        ):
+        self, 
+        group_id: int, 
+        position: Vector2, 
+        speed: float,
+        value: int, 
+        age: int, 
+        lifespan: int
+    ):
         self.group_id: int = group_id
         self.position: Vector2 = position
         self.speed: float = speed
@@ -38,7 +38,7 @@ class Animal(ABC, Generic[T]):
             direction = direction.normalize() * self.speed
         self.position += direction
 
-    def get_surroundings(self, board: Board) -> List[Field]:
+    def get_surroundings(self, board: "Board") -> List["Field"]:
         """Returns the nearby fields on the board."""
         return board.get_neighbors(Field(self.position.x, self.position.y))
 
@@ -59,7 +59,7 @@ class Animal(ABC, Generic[T]):
             return True
         return False
 
-    def drink(self, source: Pond):
+    def drink(self, source: "Pond"):
         """Drink water if within range (distance 5)"""
         if self.position.distance_to(source.position) < 5:
             self.thirst = max(self.thirst - 1, 0)

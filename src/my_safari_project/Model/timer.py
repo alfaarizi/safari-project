@@ -1,7 +1,7 @@
 from timespeed import TimeSpeed
+
 class Timer:
     def __init__(self):
-
         self.currentTime: float = 0.0
         self.timeSpeed: TimeSpeed = TimeSpeed.NORMAL
         self.dayNightCycleEnabled: bool = True

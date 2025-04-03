@@ -1,15 +1,16 @@
 import random
 
 class Plant:
-    def __init__(self,
-                 plantID: int,
-                 location: tuple,
-                 name: str,
-                 value: int,
-                 growthRate: float,
-                 maxSize: float,
-                 isEatable: bool):
-
+    def __init__(
+        self,
+        plantID: int,
+        location: tuple,
+        name: str,
+        value: int,
+        growthRate: float,
+        maxSize: float,
+        isEatable: bool
+    ):
         self.plantID: int = plantID
         self.location: tuple = location  # (x, y)
         self.name: str = name

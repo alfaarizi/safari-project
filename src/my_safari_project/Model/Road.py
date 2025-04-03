@@ -1,5 +1,6 @@
 import math
 from typing import List, Tuple
+from capital import Capital
 
 class Road:
     def __init__(
