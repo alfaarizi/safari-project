@@ -2,16 +2,15 @@ import pygame
 from pygame.math import Vector2
 from typing import List, Any
 
-
 class Field:
     def __init__(
-            self,
-            position: Vector2,
-            field_id: int = 0,
-            terrain_type: str = "GRASS",
-            elevation: float = 0.0,
-            is_obstacle: bool = False,
-            water_level: float = 0.0
+        self,
+        position: Vector2,
+        field_id: int = 0,
+        terrain_type: str = "GRASS",
+        elevation: float = 0.0,
+        is_obstacle: bool = False,
+        water_level: float = 0.0
     ):
         self.field_id = field_id
         self.position = position

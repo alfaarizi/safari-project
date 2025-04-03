@@ -1,4 +1,7 @@
-from typing import Tuple
+from typing import Tuple, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tourist import Tourist
 
 class Jeep:
     def __init__(

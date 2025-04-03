@@ -1,4 +1,3 @@
-
 class Capital:
     def __init__(self, initialBalance: float):
         self.currentBalance = initialBalance

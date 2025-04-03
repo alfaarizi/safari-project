@@ -2,14 +2,14 @@ from pygame.math import Vector2
 from collections import deque
 from typing import List, Optional
 
-from Field import Field
-from Road import Road
-from Pond import Pond
-from Plant import Plant
-from Animal import Animal
-from Jeep import Jeep
-from Ranger import Ranger
-from Poacher import Poacher
+from field import Field
+from road import Road
+from pond import Pond
+from plant import Plant
+from animal import Animal
+from jeep import Jeep
+from ranger import Ranger
+from poacher import Poacher
 
 class Board:
     def __init__(self, width: int, height: int):
