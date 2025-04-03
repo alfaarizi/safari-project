@@ -41,5 +41,5 @@ After activating the environment, run:
 If you have a script defined in your `pyproject.toml`, for example:  
 [tool.poetry.scripts] my-safari-game = "src.main:run_game"
 then you can do:  
-`poetry run my-safari-game`
+`poetry run python3 src/my_safari_project/main.py`
 
