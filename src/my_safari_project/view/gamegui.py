@@ -14,7 +14,7 @@ You can run this file directly:
 import pygame
 import sys
 from typing import List, Dict, Tuple
-from my_safari_project.control.game_controller import GameController, DifficultyLevel, GameState, DayPhase  
+from my_safari_project.control.gamecontroller import GameController, DifficultyLevel, GameState, DayPhase  
 
 class GameGUI:
     """
