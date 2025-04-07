@@ -1,195 +1,257 @@
 import pygame
+import math
 from pygame.math import Vector2
 
-import pygame
-from pygame.math import Vector2
-from board import Board
-from my_safari_project.Model.field import Field  # Make sure Field has a minimal constructor and, if needed, a draw() method.
-
+from my_safari_project.model.board import Board
+from my_safari_project.model.pond import Pond
+from my_safari_project.model.plant import Plant
+from my_safari_project.model.animal import Animal
+from my_safari_project.model.jeep import Jeep
+from my_safari_project.model.ranger import Ranger
+from my_safari_project.model.poacher import Poacher
+from my_safari_project.model.road import Road
 
 class BoardGUI:
-    """
-    A GUI class for rendering the game board and its entities using Pygame.
-    """
-    def __init__(self, board, tile_size=64):
+    def __init__(self, board: Board, tile_width=64, tile_height=64, isometric=False):
         """
-        :param board: An instance of Board (your game board).
-        :param tile_size: The pixel size of each board tile.
+        Initializes the BoardGUI with a Board model instance and visual settings.
         """
         self.board = board
-        self.tile_size = tile_size
-        self.screen = None
+        self.tile_width = tile_width
+        self.tile_height = tile_height
+        self.isometric_mode = isometric
+        self.day_night_opacity = 0.0  # 0.0 = day, 1.0 = night
+        self.camera_x = 0
+        self.camera_y = 0
 
-    def init_gui(self):
+        # Colors defined according to the UML/design spec
+        self.colors = {
+            'sand': (194, 178, 128),
+            'sand_dark': (160, 140, 90),
+            'water': (65, 105, 225),
+            'plant': (34, 139, 34),
+            'animal': (255, 69, 0),
+            'jeep': (255, 215, 0),
+            'ranger': (0, 191, 255),
+            'poacher': (255, 0, 0),
+            'road': (105, 105, 105),
+            'night': (10, 10, 30)
+        }
+
+        # Ensure pygame is initialized
+        if not pygame.get_init():
+            pygame.init()
+
+        self.screen = None
+        self.overlay = None
+
+    def init_gui(self, screen_width=800, screen_height=600):
         """
-        Initializes Pygame and sets up the window using the board dimensions.
+        Initializes the pygame display and overlay surface.
         """
-        pygame.init()
-        window_width = self.board.width * self.tile_size
-        window_height = self.board.height * self.tile_size
-        self.screen = pygame.display.set_mode((window_width, window_height))
-        pygame.display.set_caption("Safari Game Board")
+        self.screen = pygame.display.set_mode((screen_width, screen_height))
+        pygame.display.set_caption("Safari Game")
+        self.overlay = pygame.Surface((screen_width, screen_height), pygame.SRCALPHA)
 
     def draw_board(self):
         """
-        Draws the background board grid. Here we fill each field with a green shade
-        and draw grid lines. You can replace this with more detailed images if desired.
+        Clears the screen, draws the background grid, and renders all entities.
         """
-        for row in range(self.board.height):
-            for col in range(self.board.width):
-                # Calculate the pixel rectangle for the tile
-                rect = pygame.Rect(col * self.tile_size, row * self.tile_size, self.tile_size, self.tile_size)
-                # Fill with a light green (for example)
-                pygame.draw.rect(self.screen, (144, 238, 144), rect)
-                # Draw grid lines (black borders)
-                pygame.draw.rect(self.screen, (0, 0, 0), rect, 1)
+        self.screen.fill(self.colors['sand'])
 
-    def draw_roads(self):
-        """
-        Draws the roads. This example assumes each Road object has a 'points'
-        attribute which is a list of Vector2 positions (in board coordinates).
-        """
-        for road in self.board.roads:
-            if hasattr(road, 'points'):
-                # Convert board coordinates to pixel positions
-                points = [(int(p.x * self.tile_size + self.tile_size / 2),
-                           int(p.y * self.tile_size + self.tile_size / 2))
-                          for p in road.points]
-                if len(points) >= 2:
-                    pygame.draw.lines(self.screen, (128, 128, 128), False, points, 5)
+        # Draw grid lines
+        for x in range(0, self.screen.get_width(), self.tile_width):
+            pygame.draw.line(self.screen, self.colors['sand_dark'], (x, 0), (x, self.screen.get_height()))
+        for y in range(0, self.screen.get_height(), self.tile_height):
+            pygame.draw.line(self.screen, self.colors['sand_dark'], (0, y), (self.screen.get_width(), y))
 
-    def draw_ponds(self):
-        """
-        Draws ponds as blue ellipses. Assumes each Pond has a 'location' property.
-        """
-        for pond in self.board.ponds:
-            if hasattr(pond, 'location'):
-                # Convert pond location to pixel coordinates
-                x = int(pond.location[0] * self.tile_size)
-                y = int(pond.location[1] * self.tile_size)
-                rect = pygame.Rect(x, y, self.tile_size, self.tile_size)
-                pygame.draw.ellipse(self.screen, (0, 0, 255), rect)
-
-    def draw_plants(self):
-        """
-        Draws plants as green rectangles. Assumes each Plant has a 'location' property.
-        """
-        for plant in self.board.plants:
-            if hasattr(plant, 'location'):
-                x = int(plant.location[0] * self.tile_size)
-                y = int(plant.location[1] * self.tile_size)
-                rect = pygame.Rect(x, y, self.tile_size, self.tile_size)
-                pygame.draw.rect(self.screen, (34, 139, 34), rect)
-                # Optionally, you could add a text label or growth indicator here.
-
-    def draw_animals(self):
-        """
-        Draws animals as red circles. Assumes each Animal has a 'location' property.
-        """
-        for animal in self.board.animals:
-            if hasattr(animal, 'location'):
-                x = int(animal.location[0] * self.tile_size)
-                y = int(animal.location[1] * self.tile_size)
-                center = (x + self.tile_size // 2, y + self.tile_size // 2)
-                pygame.draw.circle(self.screen, (255, 0, 0), center, self.tile_size // 3)
-
-    def draw_jeeps(self):
-        """
-        Draws jeeps as yellow rectangles. Assumes each Jeep has a 'location' property.
-        """
-        for jeep in self.board.jeeps:
-            if hasattr(jeep, 'location'):
-                x = int(jeep.location[0] * self.tile_size)
-                y = int(jeep.location[1] * self.tile_size)
-                rect = pygame.Rect(x, y, self.tile_size, self.tile_size)
-                pygame.draw.rect(self.screen, (255, 255, 0), rect)
-
-    def draw_rangers(self):
-        """
-        Draws rangers as cyan rectangles. Assumes each Ranger has a 'location' property.
-        """
-        for ranger in self.board.rangers:
-            if hasattr(ranger, 'location'):
-                x = int(ranger.location[0] * self.tile_size)
-                y = int(ranger.location[1] * self.tile_size)
-                rect = pygame.Rect(x, y, self.tile_size, self.tile_size)
-                pygame.draw.rect(self.screen, (0, 255, 255), rect)
-
-    def draw_poachers(self):
-        """
-        Draws poachers as magenta rectangles. Assumes each Poacher has a 'location' property.
-        """
-        for poacher in self.board.poachers:
-            if hasattr(poacher, 'location'):
-                x = int(poacher.location[0] * self.tile_size)
-                y = int(poacher.location[1] * self.tile_size)
-                rect = pygame.Rect(x, y, self.tile_size, self.tile_size)
-                pygame.draw.rect(self.screen, (255, 0, 255), rect)
-
-    def update(self):
-        """
-        Redraws the entire board and all entities.
-        Call this in your main game loop.
-        """
-        if not self.screen:
-            return
-        # Draw the background board
-        self.draw_board()
-        # Draw all entities on top
-        self.draw_roads()
+        # Draw entities in order (back to front)
         self.draw_ponds()
         self.draw_plants()
         self.draw_animals()
         self.draw_jeeps()
         self.draw_rangers()
         self.draw_poachers()
-        # Update the display
+        self.draw_roads()
+
+        # Apply day/night overlay 
+        self.apply_day_night_overlay()
+
         pygame.display.flip()
 
-import pygame
-from pygame.math import Vector2
-from board import Board
-from board_gui import BoardGUI
-from field import Field  # Make sure Field has a minimal constructor and, if needed, a draw() method.
+    def draw_ponds(self):
+        """
+        Draws each pond as an ellipse. Assumes pond.location is either a tuple (x,y)
+        or a pygame.math.Vector2.
+        """
+        for pond in self.board.ponds:
+            # Adapt to location type
+            if hasattr(pond.location, 'x'):
+                x = int(pond.location.x * self.tile_width)
+                y = int(pond.location.y * self.tile_height)
+            else:
+                x = int(pond.location[0] * self.tile_width)
+                y = int(pond.location[1] * self.tile_height)
+            rect = pygame.Rect(
+                x - self.camera_x, 
+                y - self.camera_y, 
+                int(self.tile_width * 1.5), 
+                int(self.tile_height * 1.2)
+            )
+            pygame.draw.ellipse(self.screen, self.colors['water'], rect)
 
-def main():
-    # Create a Board instance with a width of 10 columns and height of 8 rows.
+    def draw_plants(self):
+        """
+        Draws plants as circles with stems. Assumes plant.location is a Vector2.
+        """
+        for plant in self.board.plants:
+            x = int(plant.location.x * self.tile_width + self.tile_width / 2)
+            y = int(plant.location.y * self.tile_height + self.tile_height / 2)
+            # Draw stem
+            pygame.draw.line(
+                self.screen, 
+                (50, 205, 50),
+                (x - self.camera_x, y - self.camera_y + 10),
+                (x - self.camera_x, y - self.camera_y - 10),
+                3
+            )
+            # Draw plant crown
+            pygame.draw.circle(
+                self.screen, 
+                self.colors['plant'],
+                (x - self.camera_x, y - self.camera_y - 15),
+                12
+            )
+
+    def draw_animals(self):
+        """
+        Draws animals as simple circles. Assumes animal.location is a Vector2.
+        """
+        for animal in self.board.animals:
+            x = int(animal.location.x * self.tile_width + self.tile_width / 2)
+            y = int(animal.location.y * self.tile_height + self.tile_height / 2)
+            pygame.draw.circle(self.screen, self.colors['animal'], (x - self.camera_x, y - self.camera_y), 10)
+
+    def draw_jeeps(self):
+        """
+        Draws jeeps as rectangles. Assumes jeep.location is a Vector2.
+        """
+        for jeep in self.board.jeeps:
+            x = int(jeep.location.x * self.tile_width)
+            y = int(jeep.location.y * self.tile_height)
+            rect = pygame.Rect(
+                x - self.camera_x,
+                y - self.camera_y,
+                int(self.tile_width * 0.8),
+                int(self.tile_height * 0.5)
+            )
+            pygame.draw.rect(self.screen, self.colors['jeep'], rect)
+
+    def draw_rangers(self):
+        """
+        Draws rangers as triangles. Assumes ranger.location is a Vector2.
+        """
+        for ranger in self.board.rangers:
+            x = int(ranger.location.x * self.tile_width + self.tile_width / 2)
+            y = int(ranger.location.y * self.tile_height + self.tile_height / 2)
+            points = [
+                (x - self.camera_x, y - self.camera_y - 10),  # Top point
+                (x - self.camera_x - 8, y - self.camera_y + 10),  # Bottom left
+                (x - self.camera_x + 8, y - self.camera_y + 10)   # Bottom right
+            ]
+            pygame.draw.polygon(self.screen, self.colors['ranger'], points)
+
+    def draw_poachers(self):
+        """
+        Draws poachers as triangles. Assumes poacher.location is a Vector2.
+        """
+        for poacher in self.board.poachers:
+            x = int(poacher.location.x * self.tile_width + self.tile_width / 2)
+            y = int(poacher.location.y * self.tile_height + self.tile_height / 2)
+            points = [
+                (x - self.camera_x, y - self.camera_y - 10),
+                (x - self.camera_x - 8, y - self.camera_y + 10),
+                (x - self.camera_x + 8, y - self.camera_y + 10)
+            ]
+            pygame.draw.polygon(self.screen, self.colors['poacher'], points)
+
+    def draw_roads(self):
+        """
+        Draws roads as gray lines. Assumes each road has a list of points (Vector2).
+        """
+        for road in self.board.roads:
+            if len(road.points) >= 2:
+                points = [
+                    (int(p.x * self.tile_width + self.tile_width / 2 - self.camera_x),
+                     int(p.y * self.tile_height + self.tile_height / 2 - self.camera_y))
+                    for p in road.points
+                ]
+                pygame.draw.lines(self.screen, self.colors['road'], False, points, 5)
+
+    def apply_day_night_overlay(self):
+        """
+        Applies a translucent overlay for the day/night cycle.
+        """
+        if self.day_night_opacity > 0:
+            self.overlay.fill((0, 0, 0, int(200 * self.day_night_opacity)))
+            self.screen.blit(self.overlay, (0, 0))
+
+    def set_day_night_opacity(self, opacity: float):
+        """
+        Sets the opacity for the day/night overlay (clamped between 0.0 and 1.0).
+        """
+        self.day_night_opacity = max(0.0, min(1.0, opacity))
+
+    def toggle_isometric_mode(self):
+        """
+        Toggles between isometric and orthogonal views.
+        (Implement isometric projection transformation if required by the UML.)
+        """
+        self.isometric_mode = not self.isometric_mode
+        # Apply any view transformation changes here if needed
+
+
+# Test harness (only run if executed directly)
+
+if __name__ == '__main__':
+
+    # The following is an example assuming the model classes are properly defined.
     board = Board(width=10, height=8)
     
-    # Initialize board.fields as a 2D list of Field objects.
-    # (If your Board.initializeBoard() is not complete, do it manually here.)
-    board.fields = [[None for _ in range(board.width)] for _ in range(board.height)]
-    for y in range(board.height):
-        for x in range(board.width):
-            # Create a Field with a position (using Vector2).
-            board.fields[y][x] = Field(Vector2(x, y))
+    # Add two ponds and two plants (using your actual constructors)
+    board.ponds.append(Pond(1, Vector2(2, 3), "Oasis", 100, 200, 400, 500))
+    board.ponds.append(Pond(2, Vector2(7, 5), "Waterhole", 100, 200, 400, 500))
+    board.plants.append(Plant(1, Vector2(4, 2), "Acacia", 50, 0.1, 100, True))
+    board.plants.append(Plant(2, Vector2(5, 6), "Baobab", 70, 0.05, 200, False))
     
-    # Optionally add some sample entities:
-    # For instance, add a Pond and a Plant to see them rendered.
-    from pond import Pond
-    from plant import Plant
-    board.ponds.append(Pond(pondID=1, location=(2, 3), name="Oasis", buildCost=100, retentionCost=10, capacity=500.0, evaporationRate=2.0))
-    board.plants.append(Plant(plantID=1, location=(5, 4), name="Acacia", value=50, growthRate=0.5, maxSize=100.0, isEatable=True))
-    
-    # Create a BoardGUI instance with a tile size of 64 pixels.
-    board_gui = BoardGUI(board, tile_size=64)
-    board_gui.init_gui()
-    
+    # Ensuring the other lists exist even if empty
+    board.animals = []
+    board.jeeps = []
+    board.rangers = []
+    board.poachers = []
+    board.roads = []
+
+    gui = BoardGUI(board)
+    gui.init_gui(800, 600)
+
     clock = pygame.time.Clock()
     running = True
+    time_counter = 0
 
     while running:
-        clock.tick(60)  # Limit to 60 FPS
-        
-        # Process events
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-        
-        # Update the board GUI (draw the board and all entities)
-        board_gui.update()
+            elif event.type == pygame.KEYDOWN:
+                # Toggle isometric mode with the spacebar
+                if event.key == pygame.K_SPACE:
+                    gui.toggle_isometric_mode()
+
+        time_counter += 0.01
+        if time_counter > 10:
+            time_counter = 0
+        gui.set_day_night_opacity(abs(math.sin(time_counter * math.pi / 5)))
+        gui.draw_board()
+        clock.tick(60)
 
     pygame.quit()
-
-if __name__ == "__main__":
-    main()
