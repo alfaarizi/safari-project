@@ -2,14 +2,14 @@ from pygame.math import Vector2
 from collections import deque
 from typing import List, Optional
 
-from field import Field
-from road import Road
-from pond import Pond
-from plant import Plant
-from animal import Animal
-from jeep import Jeep
-from ranger import Ranger
-from poacher import Poacher
+from my_safari_project.model.field import Field
+from my_safari_project.model.road import Road
+from my_safari_project.model.pond import Pond
+from my_safari_project.model.plant import Plant
+from my_safari_project.model.animal import Animal
+from my_safari_project.model.jeep import Jeep
+from my_safari_project.model.ranger import Ranger
+from my_safari_project.model.poacher import Poacher
 
 class Board:
     def __init__(self, width: int, height: int):
@@ -27,6 +27,7 @@ class Board:
     
     def initializeBoard(self):
         """Initialize the board with empty fields"""
+        self.fields = [[None for _ in range(self.width)] for _ in range(self.height)]
         for y in range(self.height):
             for x in range(self.width):
                 self.fields[y][x] = Field(Vector2(x, y))
@@ -71,6 +72,13 @@ class Board:
     def addPoacher(self, poacher: Poacher):
         """Adds a poacher to the board."""
         self.poachers.append(poacher)
+
+    def removePoacher(self, poacher: Poacher):
+        """Removes a poacher from the board."""
+        try:
+            self.poachers.remove(poacher)
+        except:
+            pass
     
     def updateAll(self, deltaTime: float):
         """Sample Implementation"""
