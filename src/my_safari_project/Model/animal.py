@@ -3,11 +3,11 @@ from abc import ABC
 from typing import List, TypeVar, Generic, Union, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from plant import Plant
-    from herbivore import Herbivore
-    from pond import Pond
-    from board import Board
-    from field import Field
+    from my_safari_project.model.plant import Plant
+    from my_safari_project.model.herbivore import Herbivore
+    from my_safari_project.model.pond import Pond
+    from my_safari_project.model.board import Board
+    from my_safari_project.model.field import Field
 
 T = TypeVar('T', bound=Union["Plant", "Herbivore"])
 
@@ -28,6 +28,7 @@ class Animal(ABC, Generic[T]):
         self.value: int = value
         self.age: int = age
         self.lifespan: int = lifespan
+        self.alive: bool = True
         self.hunger: int = 0 # {0..10}
         self.thirst: int = 0 # {0..10}
 
@@ -86,7 +87,7 @@ class Animal(ABC, Generic[T]):
 
     def is_alive(self) -> bool:
         """Check if the animal is still alive"""
-        return self.age < self.lifespan and self.hunger > 0 and self.thirst > 0
+        return self.alive and (self.age < self.lifespan and self.hunger > 0 and self.thirst > 0)
 
     def is_adult(self) -> bool:
         """Check if the animal is an adult (lived more than half of lifespan)"""
