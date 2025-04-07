@@ -2,14 +2,14 @@ from pygame.math import Vector2
 from collections import deque
 from typing import List, Optional
 
-from field import Field
-from road import Road
-from pond import Pond
-from plant import Plant
-from animal import Animal
-from jeep import Jeep
-from ranger import Ranger
-from poacher import Poacher
+from my_safari_project.model.field import Field
+from my_safari_project.model.road import Road
+from my_safari_project.model.pond import Pond
+from my_safari_project.model.plant import Plant
+from my_safari_project.model.animal import Animal
+from my_safari_project.model.jeep import Jeep
+from my_safari_project.model.ranger import Ranger
+from my_safari_project.model.poacher import Poacher
 
 class Board:
     def __init__(self, width: int, height: int):

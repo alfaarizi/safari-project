@@ -3,7 +3,7 @@ from typing import TYPE_CHECKING
 from animal import Animal
 
 if TYPE_CHECKING:
-    from herbivore import Herbivore
+    from my_safari_project.model.herbivore import Herbivore
 
 class Carnivore(Animal["Herbivore"]):
     """Animal that consumes Herbivore"""

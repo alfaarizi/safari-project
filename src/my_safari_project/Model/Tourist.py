@@ -1,8 +1,8 @@
 from typing import Tuple, TYPE_CHECKING
-from animal import Animal
+from my_safari_project.model.animal import Animal
 
 if TYPE_CHECKING:
-    from jeep import Jeep
+    from my_safari_project.model.jeep import Jeep
 
 class Tourist:
     def __init__(

@@ -1,5 +1,5 @@
 import random
-from animal import Animal
+from my_safari_project.model.animal import Animal
 
 class Position:
     def __init__(self, x: int, y: int):

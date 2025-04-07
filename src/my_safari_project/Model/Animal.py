@@ -3,11 +3,11 @@ from abc import ABC
 from typing import List, TypeVar, Generic, Union, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from plant import Plant
-    from herbivore import Herbivore
-    from pond import Pond
-    from board import Board
-    from field import Field
+    from my_safari_project.model.plant import Plant
+    from my_safari_project.model.herbivore import Herbivore
+    from my_safari_project.model.pond import Pond
+    from my_safari_project.model.board import Board
+    from my_safari_project.model.field import Field
 
 T = TypeVar('T', bound=Union["Plant", "Herbivore"])
 
