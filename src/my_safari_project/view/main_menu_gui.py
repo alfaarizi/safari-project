@@ -84,7 +84,7 @@ def main_menu():
         print(f"Starting game with difficulty: {difficulty}")
         pygame.quit()
         game = BoardGUI(difficulty)
-        controller = GameController()
+        controller = GameController(difficulty_levels.index(difficulty))
         controller.run()
         game.run()
 
