@@ -3,6 +3,7 @@ import sys
 import tkinter as tk
 from tkinter import filedialog
 from my_safari_project.view.board_gui import BoardGUI
+from control.game_controller import GameController
 
 pygame.init()
 font_main = pygame.font.SysFont("Comic Sans MS", 36)
@@ -83,6 +84,8 @@ def main_menu():
         print(f"Starting game with difficulty: {difficulty}")
         pygame.quit()
         game = BoardGUI(difficulty)
+        controller = GameController()
+        controller.run()
         game.run()
 
     def load_game():
