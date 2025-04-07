@@ -82,9 +82,10 @@ def main_menu():
     def new_game():
         difficulty = difficulty_levels[selected_difficulty]
         print(f"Starting game with difficulty: {difficulty}")
+        width, height = screen.get_size()
         pygame.quit()
         game = BoardGUI(difficulty)
-        controller = GameController(difficulty_levels.index(difficulty))
+        controller = GameController(difficulty_levels.index(difficulty),width, height)
         controller.run()
         game.run()
 

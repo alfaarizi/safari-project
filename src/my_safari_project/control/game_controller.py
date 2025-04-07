@@ -203,14 +203,14 @@ class GameController:
     - Renders a slightly more "modern" look using color schemes and hover effects.
     """
 
-    def __init__(self,difficulty_index):
+    def __init__(self,difficulty_index,width, height):
         """
         Initializes Pygame and sets up the UI layout, placeholders for capital,
         day/night, difficulty, game state, etc.
         """
         pygame.init()
-        self.screen_width = 1080
-        self.screen_height = 720
+        self.screen_width = width
+        self.screen_height = height
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height))
         pygame.display.set_caption("Safari - GameController Demo")
 
@@ -520,11 +520,4 @@ class GameController:
                 self.feedback_message_timer = 0
                 self.feedback_message = ""
 
-# -----------------------------------------------------------
-# Main entry
-# -----------------------------------------------------------
-
-if __name__ == "__main__":
-    controller = GameController()
-    controller.run()
 
