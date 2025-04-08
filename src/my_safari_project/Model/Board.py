@@ -8,7 +8,7 @@ from my_safari_project.model.pond import Pond
 from my_safari_project.model.plant import Plant
 from my_safari_project.model.animal import Animal
 from my_safari_project.model.jeep import Jeep
-from my_safari_project.model.ranger import Ranger
+from model.ranger import Ranger
 from my_safari_project.model.poacher import Poacher
 
 class Board:

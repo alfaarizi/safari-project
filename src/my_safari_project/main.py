@@ -1,4 +1,3 @@
-import pygame
 from my_safari_project.view.main_menu_gui import main_menu
 
 def run_game():
