@@ -4,6 +4,7 @@ import tkinter as tk
 from tkinter import filedialog
 from my_safari_project.view.board_gui import BoardGUI
 from my_safari_project.control.game_controller import GameController
+from my_safari_project.view.gamegui import GameGUI
 
 # Initialize Pygame modules
 pygame.init()
@@ -119,10 +120,8 @@ def main_menu():
         width, height = screen.get_size()
         pygame.mixer.music.stop()
         pygame.quit()
-        game = BoardGUI(difficulty)
-        controller = GameController(difficulty_levels.index(difficulty), width, height)
-        controller.run()
-        game.run()
+        game_gui = GameGUI()
+        game_gui.run()
 
     def load_game():
         root = tk.Tk()
