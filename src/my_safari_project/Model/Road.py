@@ -1,6 +1,6 @@
 import math
 from typing import List, Tuple
-from capital import Capital
+from my_safari_project.model.capital import Capital
 
 class Road:
     def __init__(

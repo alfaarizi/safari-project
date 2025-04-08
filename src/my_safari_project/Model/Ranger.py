@@ -1,5 +1,5 @@
 import random
-from animal import Animal
+from my_safari_project.model.animal import Animal
 
 class Position:
     def __init__(self, x: int, y: int):
@@ -33,9 +33,9 @@ class Ranger:
             return True
         return False
     
-    def eliminateAnimal(self, animal) -> bool:
-        if isinstance(animal, Animal) and animal.isAlive:
-            animal.isAlive = False
+    def eliminateAnimal(self, animal: Animal) -> bool:
+        if animal.is_alive():
+            animal.alive = False
             self.animalsEliminated += 1
             return True
         return False

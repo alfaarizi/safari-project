@@ -1,6 +1,6 @@
 import random
-from ranger import Position
-from animal import Animal
+from my_safari_project.model.ranger import Position
+from my_safari_project.model.animal import Animal
 
 class Poacher:
     def __init__(self, id: int, name: str, position: "Position"):
