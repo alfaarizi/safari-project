@@ -23,12 +23,14 @@ class GameGUI:
     - Toggles day/night, difficulty, and game state on click.
     - Deducts cost from capital when shop items are clicked.
     - Renders a slightly more "modern" look using color schemes and hover effects.
+
     """
 
     def __init__(self):
         """
         Initializes Pygame and sets up the UI layout, placeholders for capital,
         day/night, difficulty, game state, etc.
+
         """
         pygame.init()
         self.screen_width = 1080
@@ -67,6 +69,7 @@ class GameGUI:
 
         # Shop items
         self.shop_items: List[Dict] = [
+
             {"name": "Road",       "cost": 50},
             {"name": "Pond",       "cost": 200},
             {"name": "Plant",      "cost": 20},
@@ -93,6 +96,7 @@ class GameGUI:
         """
         Create button rectangles for day/night, difficulty, game state.
         We'll store them in a list for easy click detection.
+
         """
         # We'll place them horizontally with some margin
         x_start = 10
@@ -121,6 +125,7 @@ class GameGUI:
     # -----------------------------------------------------------
 
     def run(self):
+
         running = True
         while running:
             delta_time = self.game_controller.timer.clock.tick(60) / 1000.0
@@ -165,6 +170,7 @@ class GameGUI:
         Detect if the user clicked on:
         1) One of the top bar buttons
         2) A shop item in the side panel
+
         """
         # 1) Check top bar buttons
         for tag, rect in self.top_bar_buttons:
@@ -181,6 +187,7 @@ class GameGUI:
     def handle_mouse_motion(self, pos: Tuple[int, int]):
         """
         Check if we're hovering over a shop item, so we can highlight it.
+
         """
         self.hovered_item_index = -1
         for i, item_rect in enumerate(self.shop_rects):
@@ -192,6 +199,7 @@ class GameGUI:
         """
         Called when a top bar button is clicked.
         Switch day/night, cycle difficulty, or toggle game state.
+
         """
         if tag == "daynight":
             self.toggle_day_night()
@@ -203,6 +211,7 @@ class GameGUI:
     def on_shop_item_click(self, index: int):
         """
         When a shop item is clicked, attempt to deduct cost from capital.
+
         """
         item = self.shop_items[index]
         cost = item["cost"]
@@ -221,6 +230,7 @@ class GameGUI:
 
     def toggle_day_night(self):
         """Switch between Day and Night."""
+
         if self.day_phase == DayPhase.DAY:
             self.day_phase = DayPhase.NIGHT
         else:
@@ -228,10 +238,12 @@ class GameGUI:
 
     def cycle_difficulty(self):
         """Cycle among Easy -> Medium -> Hard -> Easy..."""
+
         self.difficulty_index = (self.difficulty_index + 1) % len(DifficultyLevel.LEVELS)
 
     def toggle_game_state(self):
         """Toggle Running <-> Paused."""
+
         if self.game_state == GameState.RUNNING:
             self.game_state = GameState.PAUSED
         else:
@@ -246,6 +258,7 @@ class GameGUI:
         Draws a top bar with:
          - Three rectangular buttons (day/night, difficulty, game state).
          - Display of capital in the top-right corner, for example.
+
         """
         bar_rect = pygame.Rect(0, 0, self.screen_width, self.top_bar_height)
         pygame.draw.rect(self.screen, (60, 70, 90), bar_rect)
@@ -273,6 +286,7 @@ class GameGUI:
 
     def draw_button(self, rect: pygame.Rect, text: str):
         """Draws a simple button with text inside rect."""
+
         # Button background
         pygame.draw.rect(self.screen, (90, 100, 120), rect, border_radius=5)
         # Button text
@@ -285,6 +299,7 @@ class GameGUI:
         """
         Draw a side panel on the right side with "Shop" items,
         each drawn as a clickable 'card' or 'row'.
+
         """
         x_start = self.screen_width - self.side_panel_width
         y_start = self.top_bar_height
@@ -326,6 +341,7 @@ class GameGUI:
         """
         If there's a feedback message (e.g. "Not enough funds!"),
         display it near the bottom center for clarity.
+
         """
         if not self.feedback_message or self.feedback_message_alpha <= 0:
             return
@@ -344,6 +360,7 @@ class GameGUI:
     def update_feedback_message(self, delta_time: float):
         """
         Reduces the feedback message timer, hides it when time expires.
+
         """
         if self.feedback_message_timer > 0:
             self.feedback_message_timer -= delta_time
