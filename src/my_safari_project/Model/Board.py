@@ -27,6 +27,7 @@ class Board:
     
     def initializeBoard(self):
         """Initialize the board with empty fields"""
+        self.fields = [[None for _ in range(self.width)] for _ in range(self.height)]
         for y in range(self.height):
             for x in range(self.width):
                 self.fields[y][x] = Field(Vector2(x, y))
@@ -71,6 +72,13 @@ class Board:
     def addPoacher(self, poacher: Poacher):
         """Adds a poacher to the board."""
         self.poachers.append(poacher)
+
+    def removePoacher(self, poacher: Poacher):
+        """Removes a poacher from the board."""
+        try:
+            self.poachers.remove(poacher)
+        except:
+            pass
     
     def updateAll(self, deltaTime: float):
         """Sample Implementation"""
@@ -153,3 +161,5 @@ class Board:
             neighbors.append(self.fields[y + 1][x])
         
         return neighbors
+
+
