@@ -4,7 +4,7 @@ from my_safari_project.model.timespeed import TimeSpeed
 from my_safari_project.model.board import Board
 from my_safari_project.model.capital import Capital
 from my_safari_project.model.poacher import Poacher
-from my_safari_project.model.ranger import Position, Ranger  # Adjusted module path
+from my_safari_project.model.ranger import Position, Ranger
 
 # -----------------------------------------------------------
 # Enums / Simple Classes to Mimic UML or Basic Features

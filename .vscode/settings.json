@@ -1,8 +1,5 @@
 {
     "python.analysis.extraPaths": [
-        "./src/my_safari_project/Model",
-        "./src/my_safari_project/view",
-        "./src/my_safari_project",
-        "./src/my_safari_project"
+        "./src/my_safari_project/Model"
     ]
 }

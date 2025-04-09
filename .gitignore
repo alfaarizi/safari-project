@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
+
 
 # Virtual environment
 .venv/
@@ -23,22 +25,15 @@ coverage.xml
 *.cover
 *.py,cover
 
-# mypy, pyright, pylint, etc.
 .mypy_cache/
 .pyright/
 .pylint.d/
 
-# PyCharm/VS Code project settings
 .idea/
 .vscode/
 
-# Tkinter dialog selections (optional)
-*.sav
-*.json
-*.txt
 
 
 # System files
 .DS_Store
 Thumbs.db
-

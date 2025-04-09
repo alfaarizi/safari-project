@@ -4,4 +4,5 @@ def run_game():
     main_menu()
 
 if __name__ == "__main__":
-    run_game()
+    controller = GameGUI()
+    controller.run()

@@ -2,7 +2,6 @@ import pygame
 import sys
 import tkinter as tk
 from tkinter import filedialog
-from my_safari_project.view.board_gui import BoardGUI
 from my_safari_project.control.game_controller import GameController
 from my_safari_project.view.gamegui import GameGUI
 
