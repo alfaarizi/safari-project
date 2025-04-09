@@ -38,8 +38,10 @@ class GameGUI:
         pygame.init()
         self.screen_width = 1080
         self.screen_height = 720
-        self.top_bar_height = 29
-        self.side_panel_width = 95
+        # UI layout
+        self.top_bar_height = 60
+        self.side_panel_width = 320
+        self.background_color = (40, 45, 50)  # A dark background
 
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.SRCALPHA)
         pygame.display.set_caption("Safari - GameGUI Demo")
@@ -55,7 +57,7 @@ class GameGUI:
 
         # Modified in __init__
         self.board_gui = BoardGUI(self.board)
-        self.board_gui.init_gui(self.screen_width - self.side_panel_width, self.screen_height - self.top_bar_height)
+        # self.board_gui.init_gui(self.screen_width - self.side_panel_width, self.screen_height - self.top_bar_height)
 
         # Fonts
         self.font_small = pygame.font.SysFont("Verdana", 16)
@@ -67,11 +69,6 @@ class GameGUI:
         self.game_state = GameState.RUNNING
         self.difficulty_index = 0  # 0 -> Easy, 1 -> Medium, 2 -> Hard
         self.day_phase = DayPhase.DAY
-
-        # UI layout
-        self.top_bar_height = 60
-        self.side_panel_width = 320
-        self.background_color = (40, 45, 50)  # A dark background
 
         # Buttons (top bar) config
         self.button_height = 40
@@ -138,6 +135,7 @@ class GameGUI:
     # -----------------------------------------------------------
 
     def run(self):
+        print(self.screen_width)
         running = True
         while running:
             delta_time = self.game_controller.timer.clock.tick(60) / 1000.0
