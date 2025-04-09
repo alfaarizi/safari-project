@@ -1,6 +1,8 @@
 import pygame
 
-def run_game():
+from my_safari_project.view.gamegui import GameGUI
+
+'''def run_game():
     pygame.init()
     screen = pygame.display.set_mode((800, 600))
     pygame.display.set_caption("Safari Game")
@@ -16,4 +18,8 @@ def run_game():
     pygame.quit()
 
 if __name__ == "__main__":
-    run_game()
+    run_game()'''
+
+if __name__ == "__main__":
+    controller = GameGUI()
+    controller.run()

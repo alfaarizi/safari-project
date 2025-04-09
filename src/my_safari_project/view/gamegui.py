@@ -14,7 +14,10 @@ You can run this file directly:
 import pygame
 import sys
 from typing import List, Dict, Tuple
-from my_safari_project.control.gamecontroller import GameController, DifficultyLevel, GameState, DayPhase  
+from my_safari_project.control.gamecontroller import GameController, DifficultyLevel, GameState, DayPhase
+from my_safari_project.model.board import Board
+from my_safari_project.view.boardgui import BoardGUI
+
 
 class GameGUI:
     """
@@ -35,14 +38,24 @@ class GameGUI:
         pygame.init()
         self.screen_width = 1080
         self.screen_height = 720
+        self.top_bar_height = 29
+        self.side_panel_width = 95
+
         self.screen = pygame.display.set_mode((self.screen_width, self.screen_height), pygame.SRCALPHA)
         pygame.display.set_caption("Safari - GameGUI Demo")
         
         # GameController instance
-        self.game_controller = GameController(20, 20, 1000, DifficultyLevel.LEVELS[0])
+        self.game_controller = GameController(25, 25, 1000, DifficultyLevel.LEVELS[0])
 
         # Frame timing
         # self.game_controller.timer.clock
+
+        # Create board instance
+        self.board = Board(20, 15)  # Adjust size as needed
+
+        # Modified in __init__
+        self.board_gui = BoardGUI(self.board)
+        self.board_gui.init_gui(self.screen_width - self.side_panel_width, self.screen_height - self.top_bar_height)
 
         # Fonts
         self.font_small = pygame.font.SysFont("Verdana", 16)
@@ -125,7 +138,6 @@ class GameGUI:
     # -----------------------------------------------------------
 
     def run(self):
-
         running = True
         while running:
             delta_time = self.game_controller.timer.clock.tick(60) / 1000.0
@@ -139,25 +151,34 @@ class GameGUI:
                 elif event.type == pygame.MOUSEBUTTONDOWN:
                     self.handle_mouse_click(event.pos)
 
-            # Update background, messages, etc.
             self.update_feedback_message(delta_time)
-
-            # Clear screen
             self.screen.fill(self.background_color)
 
-            # Draw top bar
+            # Draw the top bar
             self.draw_top_bar()
 
-            # Draw side shop panel
+            # === NEW CODE: Draw the BoardGUI in the left area ===
+            board_area_rect = pygame.Rect(
+                0,
+                self.top_bar_height,
+                self.screen_width - self.side_panel_width,
+                self.screen_height - self.top_bar_height
+            )
+            board_surface = pygame.Surface((board_area_rect.width, board_area_rect.height))
+            self.board_gui.screen = board_surface
+            self.board_gui.overlay = pygame.Surface((board_area_rect.width, board_area_rect.height), pygame.SRCALPHA)
+            board_surface.fill(self.board_gui.colors.get('sand', (194, 178, 128)))
+            self.board_gui.draw_board()  # Ensure draw_board() does NOT call pygame.display.flip()
+            self.screen.blit(board_surface, board_area_rect.topleft)
+            # === END NEW CODE ===
+
+            # Draw the side shop panel
             self.draw_side_panel()
 
-            # Draw feedback message, if any
+            # Draw feedback message if any
             self.draw_feedback_message()
 
             pygame.display.flip()
-
-            print(f"{self.game_controller.timer.currentTime:.4f}")  # Debug: print elapsed time
-
         pygame.quit()
         sys.exit()
 

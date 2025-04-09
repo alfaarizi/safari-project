@@ -77,7 +77,7 @@ class BoardGUI:
         # Apply day/night overlay 
         self.apply_day_night_overlay()
 
-        pygame.display.flip()
+       # pygame.display.flip()
 
     def draw_ponds(self):
         """
