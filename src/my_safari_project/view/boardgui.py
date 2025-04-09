@@ -247,10 +247,10 @@ if __name__ == '__main__':
                 if event.key == pygame.K_SPACE:
                     gui.toggle_isometric_mode()
 
-        time_counter += 0.01
-        if time_counter > 10:
-            time_counter = 0
-        gui.set_day_night_opacity(abs(math.sin(time_counter * math.pi / 5)))
+       # time_counter += 0.01
+        #if time_counter > 10:
+           # time_counter = 0
+       # gui.set_day_night_opacity(abs(math.sin(time_counter * math.pi / 5)))
         gui.draw_board()
         clock.tick(60)
 
