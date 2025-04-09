@@ -5,8 +5,10 @@ from tkinter import filedialog
 from my_safari_project.control.game_controller import GameController
 from my_safari_project.view.gamegui import GameGUI
 
+
 pygame.init()
 pygame.mixer.init()
+
 
 # Fonts
 font_main = pygame.font.SysFont("Comic Sans MS", 36)
