@@ -161,3 +161,5 @@ class Board:
             neighbors.append(self.fields[y + 1][x])
         
         return neighbors
+
+
