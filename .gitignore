@@ -1,0 +1,44 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environment
+.venv/
+env/
+venv/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+
+# mypy, pyright, pylint, etc.
+.mypy_cache/
+.pyright/
+.pylint.d/
+
+# PyCharm/VS Code project settings
+.idea/
+.vscode/
+
+# Tkinter dialog selections (optional)
+*.sav
+*.json
+*.txt
+
+
+# System files
+.DS_Store
+Thumbs.db
+
