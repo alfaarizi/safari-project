@@ -83,47 +83,55 @@ class BoardGUI:
 
     def render(self, screen: Surface, board_rect: pygame.Rect) -> None:
         """
-        Draw everything into board_rect = (x0,y0,width,height).
+        Draw everything into board_rect = (x0,y0,width,height) with the board centered.
         """
-        x0,y0,w,h = board_rect
+        x0, y0, w, h = board_rect
         cols, rows = self.board.width, self.board.height
 
-        # Recompute per‐cell size
+        # Recompute per‑cell size
         side = min(w//cols, h//rows)
         if side < 4:
             return
         self.tileW = self.tileH = side
+        
+        # Max board dimensions
+        total_board_width = cols * side
+        total_board_height = rows * side
+        
+        # Offset to center the board
+        offset_x = x0 + (w - total_board_width) // 2
+        offset_y = y0 + (h - total_board_height) // 2
 
         # 1) Desert background
         if self.desert_img:
-            bg = pygame.transform.scale(self.desert_img, (cols*side, rows*side))
-            screen.blit(bg, (x0, y0))
+            bg = pygame.transform.scale(self.desert_img, (total_board_width, total_board_height))
+            screen.blit(bg, (offset_x, offset_y))
         else:
-            pygame.draw.rect(screen, (255,255,153), (x0,y0,cols*side,rows*side))
+            pygame.draw.rect(screen, (255,255,153), (offset_x, offset_y, total_board_width, total_board_height))
 
         # 2) Border & grid
-        pygame.draw.rect(screen, (128,128,128), (x0,y0,cols*side,rows*side), 2)
+        pygame.draw.rect(screen, (128,128,128), (offset_x, offset_y, total_board_width, total_board_height), 2)
         for i in range(cols+1):
-            xx = x0 + i*side
-            pygame.draw.line(screen, (0,0,0), (xx,y0), (xx,y0+rows*side), 1)
+            xx = offset_x + i*side
+            pygame.draw.line(screen, (0,0,0), (xx, offset_y), (xx, offset_y+total_board_height), 1)
         for j in range(rows+1):
-            yy = y0 + j*side
-            pygame.draw.line(screen, (0,0,0), (x0,yy), (x0+cols*side,yy), 1)
+            yy = offset_y + j*side
+            pygame.draw.line(screen, (0,0,0), (offset_x, yy), (offset_x+total_board_width, yy), 1)
 
         # 3) Ponds (1.5×W ×1.2×H)
         pw, ph = int(side*1.5), int(side*1.2)
         for pond in self.board.ponds:
             loc = getattr(pond, "location", Vector2(0,0))
             surf = pygame.transform.scale(self.pond_img, (pw, ph))
-            screen.blit(surf, (x0+int(loc.x*side), y0+int(loc.y*side)))
+            screen.blit(surf, (offset_x+int(loc.x*side), offset_y+int(loc.y*side)))
 
         # 4) Plants (1×W ×1.2×H, bottom‐aligned)
         gw, gh = side, int(side*1.2)
         for plant in self.board.plants:
             loc = getattr(plant, "location", Vector2(0,0))
             surf = pygame.transform.scale(self.plant_img, (gw, gh))
-            px = x0 + int(loc.x*side)
-            py = y0 + int(loc.y*side - (gh-side))
+            px = offset_x + int(loc.x*side)
+            py = offset_y + int(loc.y*side - (gh-side))
             screen.blit(surf, (px, py))
 
         # 5) Jeeps (1×W ×0.5×H)
@@ -131,24 +139,24 @@ class BoardGUI:
         for jeep in self.board.jeeps:
             loc = getattr(jeep, "location", Vector2(0,0))
             surf = pygame.transform.scale(self.jeep_img, (jw, jh))
-            screen.blit(surf, (x0+int(loc.x*side), y0+int(loc.y*side)))
+            screen.blit(surf, (offset_x+int(loc.x*side), offset_y+int(loc.y*side)))
 
         # 6) Rangers & Poachers (1×W ×1×H)
         rw, rh = side, side
         for ranger in self.board.rangers:
-            loc = getattr(ranger, "position",   Vector2(0,0))
+            loc = getattr(ranger, "position", Vector2(0,0))
             surf = pygame.transform.scale(self.ranger_img, (rw, rh))
-            screen.blit(surf, (x0+int(loc.x*side), y0+int(loc.y*side)))
+            screen.blit(surf, (offset_x+int(loc.x*side), offset_y+int(loc.y*side)))
         for poacher in self.board.poachers:
             loc = getattr(poacher, "position", Vector2(0,0))
             surf = pygame.transform.scale(self.poacher_img, (rw, rh))
-            screen.blit(surf, (x0+int(loc.x*side), y0+int(loc.y*side)))
+            screen.blit(surf, (offset_x+int(loc.x*side), offset_y+int(loc.y*side)))
 
         # 7) Roads
         for road in self.board.roads:
             pts = []
             for p in getattr(road, "points", []):
-                pts.append((x0+int(p.x*side+side//2), y0+int(p.y*side+side//2)))
+                pts.append((offset_x+int(p.x*side+side//2), offset_y+int(p.y*side+side//2)))
             if len(pts) >= 2:
                 pygame.draw.lines(screen, (105,105,105), False, pts, 4)
 
@@ -157,9 +165,9 @@ class BoardGUI:
             dayc   = (255,255,255,0)
             nightc = (0,0,70,160)
             tint   = BoardGUI._lerp_color(dayc, nightc, self.dayNightOpacity)
-            overlay = pygame.Surface((cols*side, rows*side), pygame.SRCALPHA)
+            overlay = pygame.Surface((total_board_width, total_board_height), pygame.SRCALPHA)
             overlay.fill(tint)
-            screen.blit(overlay, (x0,y0))
+            screen.blit(overlay, (offset_x, offset_y))
 
 
     def update_day_night(self, dt: float) -> None:

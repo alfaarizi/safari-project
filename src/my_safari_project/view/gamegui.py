@@ -31,7 +31,7 @@ class GameGUI:
         pygame.display.set_caption("Safari – prototype")
 
         # MODEL --------------------------------------------------------------
-        self.board   = Board(25, 25)
+        self.board   = Board(30, 30)
         self.capital = Capital(1000.0)
 
         # VIEW ---------------------------------------------------------------
