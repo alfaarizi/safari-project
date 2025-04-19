@@ -20,6 +20,12 @@ SCREEN_W, SCREEN_H = 1080, 720
 SIDE_PANEL_W = 320
 TOP_BAR_H = 60
 
+BOARD_RECT = pygame.Rect(
+    0, TOP_BAR_H,
+    SCREEN_W - SIDE_PANEL_W,
+    SCREEN_H - TOP_BAR_H
+)
+
 POACHER_INTERVAL = 20.0        # seconds between automatic spawns
 MAX_POACHERS     = 6
 
@@ -31,7 +37,7 @@ class GameGUI:
         pygame.display.set_caption("Safari – prototype")
 
         # MODEL --------------------------------------------------------------
-        self.board   = Board(25, 25)
+        self.board   = Board(30, 30)
         self.capital = Capital(1000.0)
 
         # VIEW ---------------------------------------------------------------
@@ -180,12 +186,7 @@ class GameGUI:
         self.screen.fill((40,45,50))
 
         # board area rect
-        board_rect = pygame.Rect(
-            0, TOP_BAR_H,
-            SCREEN_W - SIDE_PANEL_W,
-            SCREEN_H - TOP_BAR_H
-        )
-        self.board_gui.render(self.screen, board_rect)
+        self.board_gui.render(self.screen, BOARD_RECT)
 
         self._draw_top_bar()
         self._draw_side_panel()
