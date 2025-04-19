@@ -162,4 +162,12 @@ class Board:
         
         return neighbors
 
+    # ------------ RANGER / POACHER helpers ------------
+    def spawn_poacher(self, pos: Vector2, name="Poacher"):
+        new_id = len(self.poachers) + 1
+        self.poachers.append(Poacher(new_id, name, pos))
+
+    def spawn_ranger(self, pos: Vector2, name="Ranger", salary=150):
+        new_id = len(self.rangers) + 1
+        self.rangers.append(Ranger(pos))
 

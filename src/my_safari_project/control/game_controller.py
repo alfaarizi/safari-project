@@ -5,6 +5,7 @@ from my_safari_project.model.board import Board
 from my_safari_project.model.capital import Capital
 from my_safari_project.model.poacher import Poacher
 from my_safari_project.model.ranger import Position, Ranger  # Adjusted module path
+from my_safari_project.control.wildlife_ai import WildlifeAI
 
 # -----------------------------------------------------------
 # Enums / Simple Classes to Mimic UML or Basic Features
@@ -32,6 +33,7 @@ class GameController:
         self.board.initializeBoard()
         self.timer = Timer()  # Initialize the Timer
         self.capital = Capital(init_balance)
+        self.wildlife_ai = WildlifeAI(self.board, self.capital)
         self.difficulty_level = difficulty
         self.number_of_visitors = 0
         self.game_state = GameState.PAUSED
@@ -58,6 +60,7 @@ class GameController:
         if self.game_state == GameState.RUNNING:
             self.timer.updateTime(delta_time)
             self.board.updateAll(delta_time)
+            self.wildlife_ai.update(delta_time)
             self.calculate_visitor_flow()
             self.handle_poacher_encounters()
             self.monthly_update
@@ -110,6 +113,7 @@ class GameController:
 
     def monthly_update(self):
         self.capital.updateMonthlyBudget()
+        self.wildlife_ai.monthly_tick()
 
     def calculate_visitor_flow(self):
         pass

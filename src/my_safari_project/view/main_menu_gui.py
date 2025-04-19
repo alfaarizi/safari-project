@@ -78,10 +78,12 @@ def draw_background_cover(surface, image, x, y, w, h):
     offset_y = y + (h - new_height) // 2
     surface.blit(scaled_image, (offset_x, offset_y))
 
-def draw_safari_title(center_x, center_y,w,h,x,y):
+def draw_safari_title(center_x, center_y):
     text_surface = safari_font.render("Safari", True, YELLOW)
     rect = text_surface.get_rect(center=(center_x, center_y + 80))
     screen.blit(text_surface, rect)
+
+def scale_and_draw_image(surface, image, x, y, w, h):
     """
     Scales and draws 'image' to fill the rectangle (x, y, w, h) completely,
     preserving aspect ratio and cropping as needed (cover approach).
@@ -98,6 +100,7 @@ def draw_safari_title(center_x, center_y,w,h,x,y):
     offset_y = y + (h - new_height) // 2
 
     surface.blit(scaled_image, (offset_x, offset_y))
+
 
 class Button:
     def __init__(self, text, x, y, width, height, callback):

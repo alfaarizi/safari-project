@@ -16,6 +16,5 @@ lint_job:
   stage: lint
   image: python:3.10
   script:
-    - pip install poetry
-    - poetry install --with dev
-    - poetry run ruff .
+    - pip install ruff
+    - ruff .
