@@ -1,5 +1,14 @@
 import pygame
 from my_safari_project.model.timespeed import TimeSpeed
+#from timespeed import TimeSpeed
+
+from enum import Enum
+
+class TimeSpeed(Enum):
+    SLOW = 1
+    NORMAL = 2
+    FAST = 3
+
 
 class Timer:
     def __init__(self):
