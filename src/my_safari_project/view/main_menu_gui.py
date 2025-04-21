@@ -5,13 +5,11 @@ from tkinter import filedialog
 
 from pygame import surface, image
 
-from my_safari_project.control.game_controller import GameController
+from my_safari_project.control.game_controller import DifficultyLevel
 from my_safari_project.view.gamegui import GameGUI
-
 
 pygame.init()
 pygame.mixer.init()
-
 
 # Fonts
 font_main = pygame.font.SysFont("Comic Sans MS", 36)
@@ -63,9 +61,8 @@ HIGHLIGHT = (128, 200, 60)
 SIDEBAR_COLOR = (50, 50, 50)  # Solid sidebar background
 
 # Difficulty settings
-# Difficulty
-difficulty_levels = ["Easy", "Normal", "Hard"]
-selected_difficulty = 0
+difficulty_levels = [DifficultyLevel.EASY, DifficultyLevel.NORMAL, DifficultyLevel.HARD]
+selected_difficulty = 1  # default to Normal
 fullscreen = False
 
 def draw_background_cover(surface, image, x, y, w, h):
@@ -128,7 +125,7 @@ def draw_difficulty_selector(left_x, top_y):
         bg_color = PASTEL_YELLOW if i == selected_difficulty else PASTEL_PINK
         pygame.draw.rect(screen, bg_color, rect, border_radius=10)
         pygame.draw.rect(screen, HIGHLIGHT, rect, 2, border_radius=10)
-        text = font_small.render(level, True, color)
+        text = font_small.render(level.value, True, color)
         screen.blit(text, text.get_rect(center=rect.center))
 
 def handle_difficulty_click(pos, left_x, top_y):
@@ -141,7 +138,7 @@ def handle_difficulty_click(pos, left_x, top_y):
         rect = pygame.Rect(x, top_y, button_width, button_height)
         if rect.collidepoint(pos):
             selected_difficulty = i
-            print("Selected difficulty:", difficulty_levels[i])
+            print("Selected difficulty:", difficulty_levels[i].value)
 
 def toggle_fullscreen():
     global fullscreen, screen, WIDTH, HEIGHT
@@ -160,12 +157,12 @@ def main_menu():
 
     def new_game():
         difficulty = difficulty_levels[selected_difficulty]
-        print(f"Starting game with difficulty: {difficulty}")
+        print(f"Starting game with difficulty: {difficulty.value}")
         width, height = screen.get_size()
         pygame.mixer.music.stop()
         pygame.quit()
-        game_gui = GameGUI()
-        game_gui.run()
+        gui = GameGUI(difficulty)
+        gui.run()
 
     def load_game():
         root = tk.Tk()
@@ -209,9 +206,6 @@ def main_menu():
         start_y = HEIGHT // 2 - 150
 
         # "New Game" + difficulty
-        available_width = WIDTH - sidebar_width
-        available_height = HEIGHT
-
         draw_background_cover(screen, background, 0, 0, available_width, available_height)
         draw_safari_title(center_x=available_width // 2, center_y=HEIGHT // 2 - 120)
 
@@ -221,9 +215,6 @@ def main_menu():
         heading_text = font_main.render("Main Menu", True, WHITE)
         heading_rect = heading_text.get_rect(center=(WIDTH - sidebar_width // 2 + 30, 60))
         screen.blit(heading_text, heading_rect)
-
-        base_x = WIDTH - btn_width - margin_right
-        start_y = HEIGHT // 2 - 150
 
         buttons[0].rect.topleft = (base_x, start_y)
         buttons[0].draw()
@@ -236,8 +227,6 @@ def main_menu():
         buttons[1].draw()
 
         # "Quit"
-        buttons[1].rect.topleft = (base_x, difficulty_y + 70)
-        buttons[1].draw()
         buttons[2].rect.topleft = (base_x, buttons[1].rect.bottom + 20)
         buttons[2].draw()
 
@@ -260,4 +249,3 @@ def main_menu():
 
 if __name__ == "__main__":
     main_menu()
-
