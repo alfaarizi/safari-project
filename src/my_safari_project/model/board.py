@@ -10,6 +10,7 @@ from my_safari_project.model.animal import Animal
 from my_safari_project.model.jeep import Jeep
 from my_safari_project.model.ranger import Ranger
 from my_safari_project.model.poacher import Poacher
+from my_safari_project.model.tourist import Tourist
 
 class Board:
     def __init__(self, width: int, height: int):
@@ -23,6 +24,7 @@ class Board:
         self.jeeps: List[Jeep] = []
         self.rangers: List[Ranger] = []
         self.poachers: List[Poacher] = []
+        self.tourists: List[Tourist] = []
         self.obstaclesEnabled = True
     
     def initializeBoard(self):

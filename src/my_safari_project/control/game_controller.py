@@ -35,6 +35,7 @@ class GameController:
         self.capital = Capital(init_balance)
         self.wildlife_ai = WildlifeAI(self.board, self.capital)
         self.difficulty_level = difficulty
+        self.applyDifficulty()
         self.number_of_visitors = 0
         self.game_state = GameState.PAUSED
         self.autosave_enabled = False
@@ -42,7 +43,7 @@ class GameController:
         self.isometric_view_enabled = False
         self.last_autosave_time = 0.0
         self.start_game()
-
+    
     def start_game(self):
         self.game_state = GameState.RUNNING
 
@@ -74,8 +75,22 @@ class GameController:
     def check_lose_condition(self) -> bool:
         return self.capital.checkBankruptcy()
 
+    
+    def applyDifficulty(self):
+        """Map your difficulty to day/night lengths (seconds)."""
+        if self.difficulty_level == DifficultyLevel.LEVELS[0]:  # Easy
+            self.timer.dayLength   = 8 * 60
+            self.timer.nightLength = 4 * 60
+        elif self.difficulty_level == DifficultyLevel.LEVELS[1]:  # Medium
+            self.timer.dayLength   = 6 * 60
+            self.timer.nightLength = 3 * 60
+        else:  # Hard
+            self.timer.dayLength   = 4 * 60
+            self.timer.nightLength = 2 * 60
+
     def set_difficulty(self, level: DifficultyLevel):
         self.difficulty_level = level
+        self.applyDifficulty()
 
     def toggle_day_night_cycle(self):
         self.day_night_cycle_enabled = not self.day_night_cycle_enabled
