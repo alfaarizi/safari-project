@@ -1,7 +1,10 @@
 from __future__ import annotations
 import random
 import sys
-from typing import Dict, List
+from typing import Dict, List, Optional
+import os
+import tkinter as tk
+from tkinter import filedialog
 
 import pygame
 from pygame.math import Vector2
@@ -10,9 +13,8 @@ from my_safari_project.model.board import Board
 from my_safari_project.model.capital import Capital
 from my_safari_project.model.ranger import Ranger
 from my_safari_project.model.poacher import Poacher
-from my_safari_project.control.game_controller import DifficultyLevel
+from my_safari_project.control.game_controller import GameController, DifficultyLevel
 from my_safari_project.model.timer import Timer
-
 from my_safari_project.view.boardgui import BoardGUI
 
 SCREEN_W, SCREEN_H = 1080, 720
@@ -35,41 +37,47 @@ GAME_SECONDS_PER_DAY = 5.0
 
 
 class GameGUI:
-    def __init__(self, difficulty: DifficultyLevel):
+    def __init__(self, controller_or_difficulty):
+        if isinstance(controller_or_difficulty, GameController):
+            self.game_controller = controller_or_difficulty
+            self.board = self.game_controller.board
+            self.capital = self.game_controller.capital
+            self.timer = self.game_controller.timer
+            self.difficulty = self.game_controller.difficulty_level
+        else:
+            difficulty = controller_or_difficulty
+            self.difficulty = difficulty
+            init_balance = difficulty.thresholds[3]
+            self.board = Board(45, 40)
+            self.capital = Capital(init_balance)
+            self.timer = Timer()
+            self.game_controller = GameController(
+                board_width=self.board.width,
+                board_height=self.board.height,
+                init_balance=init_balance,
+                difficulty=difficulty
+            )
+            self.game_controller.board = self.board
+            self.game_controller.capital = self.capital
+            self.game_controller.timer = self.timer
+
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
         pygame.display.set_caption("Safari – prototype")
 
-        # Difficulty
-        self.difficulty = difficulty
-
-        # MODEL --------------------------------------------------------------
-        if difficulty == DifficultyLevel.EASY:
-            init_balance = 1500.0
+        if self.difficulty == DifficultyLevel.EASY:
             self._poacher_interval = 30.0
             self._max_poachers = 4
-        elif difficulty == DifficultyLevel.NORMAL:
-            init_balance = 1000.0
+        elif self.difficulty == DifficultyLevel.NORMAL:
             self._poacher_interval = 20.0
             self._max_poachers = 6
-        else:  # HARD
-            init_balance = 500.0
+        else:
             self._poacher_interval = 10.0
             self._max_poachers = 8
 
-        self.board   = Board(45, 40)
-        self.capital = Capital(init_balance)
-
-        # Timer (for day/night cycle)
-        self.timer = Timer()
-
-        # track real‐time to map into game days
         self.elapsed_real_seconds = 0.0
-
-        # VIEW ---------------------------------------------------------------
         self.board_gui = BoardGUI(self.board)
 
-        # UI state
         self.font_small  = pygame.font.SysFont("Verdana", 16)
         self.font_medium = pygame.font.SysFont("Verdana", 20)
         self.font_large  = pygame.font.SysFont("Verdana", 28, bold=True)
@@ -79,22 +87,19 @@ class GameGUI:
         self.feedback_timer = 0.0
         self.feedback_alpha = 0
 
-        # shop definitions
         self.shop_items: List[Dict] = [
             {"name": "Ranger", "cost": 150},
-            {"name": "Plant",  "cost": 20},
-            {"name": "Pond",   "cost": 200},
+            {"name": "Plant", "cost": 20},
+            {"name": "Pond", "cost": 200},
         ]
         self.item_rects: List[pygame.Rect] = []
         self.hover_item = -1
+        self.save_button_rect = None
 
-        # timers
         self.timer = Timer()
         self._poacher_timer = 0.0
 
-        # seed one ranger
         self._spawn_ranger()
-
     # ------------------------------------------------------------------ main
     def run(self):
         while self.running:
@@ -126,6 +131,11 @@ class GameGUI:
                 for i, r in enumerate(self.item_rects):
                     if r.collidepoint(ev.pos):
                         self._buy_item(i)
+                        break
+                # Check if save button was clicked
+                if hasattr(self, 'save_button_rect') and self.save_button_rect.collidepoint(ev.pos):
+                    self._handle_save_game()
+        
 
     # ------------------------------------------------------------- buy logic
     def _buy_item(self, index: int):
@@ -332,6 +342,34 @@ class GameGUI:
             txt = self.font_small.render(f"{item['name']}: ${item['cost']}", True, (255, 255, 255))
             self.screen.blit(txt, (rect.x + 8, rect.y + 6))
             y += 44
+        
+        # Add Save Game button at the bottom of the side panel
+        save_button_height = 50
+        save_button_rect = pygame.Rect(
+            px + 20, 
+            SCREEN_H - save_button_height - 20,  # Position at bottom with margin
+            SIDE_PANEL_W - 40, 
+            save_button_height
+        )
+        
+        # Check if mouse is hovering over save button
+        mouse_pos = pygame.mouse.get_pos()
+        save_button_hover = save_button_rect.collidepoint(mouse_pos)
+        
+        # Draw save button with hover effect
+        button_color = (0, 120, 50) if save_button_hover else (0, 100, 40)
+        pygame.draw.rect(self.screen, button_color, save_button_rect, border_radius=6)
+        pygame.draw.rect(self.screen, (255, 255, 255), save_button_rect, 2, border_radius=6)
+        
+        # Save button text
+        save_text = self.font_medium.render("Save Game", True, (255, 255, 255))
+        self.screen.blit(save_text, (
+            save_button_rect.x + (save_button_rect.width - save_text.get_width()) // 2,
+            save_button_rect.y + (save_button_rect.height - save_text.get_height()) // 2
+        ))
+        
+        # Store the save button rect for click detection
+        self.save_button_rect = save_button_rect
 
     def _draw_feedback(self):
         if self.feedback_alpha<=0: return
@@ -345,6 +383,67 @@ class GameGUI:
         self.feedback       = msg
         self.feedback_timer = 2.0
         self.feedback_alpha = 255
+
+    def _open_save_dialog(self) -> Optional[str]:
+        """Open a file dialog and return the selected save path or None if canceled"""
+        # Hide pygame window temporarily
+        pygame.display.iconify()
+        
+        # Create root tkinter window and hide it
+        root = tk.Tk()
+        root.withdraw()
+        
+        # Open file dialog
+        file_path = filedialog.asksaveasfilename(
+            title="Save Game",
+            defaultextension=".sav",
+            filetypes=[("Safari Save Files", "*.sav"), ("All Files", "*.*")],
+            initialdir=os.path.expanduser("~"),  # Start in user's home directory
+        )
+        
+        # Clean up tkinter
+        root.destroy()
+        
+        # Restore pygame window
+        pygame.display.update()
+        
+        # Remove file extension as our save function will add its own extensions
+        if file_path:
+            base_path, _ = os.path.splitext(file_path)
+            return base_path
+        
+        return None
+    
+
+    def _handle_save_game(self):
+        """Handle save game button click by opening file dialog and saving game"""
+        # Pause updates while dialog is open
+        paused_state = self.running
+        self.running = True  # Keep the loop running to prevent freezing
+
+        # Hide pygame window and open dialog
+        pygame.display.iconify()
+        root = tk.Tk()
+        root.withdraw()
+        file_path = filedialog.asksaveasfilename(
+            title="Save Game",
+            defaultextension=".sav",
+            filetypes=[("Safari Save Files", "*.sav"), ("All Files", "*.*")],
+            initialdir=os.path.expanduser("~"),
+        )
+        root.destroy()
+        pygame.display.update()
+
+        # Resume updates
+        self.running = paused_state
+
+        if file_path:
+            base_path, _ = os.path.splitext(file_path)
+            success = self.game_controller.save_game(base_path)
+            if success:
+                self._show_feedback(f"Game saved to: {os.path.basename(base_path)}")
+            else:
+                self._show_feedback("Failed to save game!")
 
 
 if __name__ == "__main__":
