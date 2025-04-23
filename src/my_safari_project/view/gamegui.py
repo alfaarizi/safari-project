@@ -187,7 +187,10 @@ class GameGUI:
     # ————————————————————————————————————————————————————————————————————— Simulation Update
 
     def _update_sim(self, dt: float):
-        # advance the day–night cycle in the view
+        self.board.update(dt)
+
+        if self.board.jeeps:
+            self.board_gui.follow(self.board.jeeps[0].position)
         self.board_gui.update_day_night(dt)
 
         # automatically spawn new poachers up to the limit
@@ -211,6 +214,9 @@ class GameGUI:
                     self.capital.addFunds(50)
             else:
                 r.patrol(self.board.width, self.board.height)
+
+        if self.board.jeeps:
+            self.board_gui.follow(self.board.jeeps[0].position)
 
         # fade out any feedback message
         if self.feedback_timer > 0:
