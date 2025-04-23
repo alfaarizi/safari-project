@@ -15,11 +15,13 @@ from my_safari_project.model.timer import Timer
 
 from my_safari_project.view.boardgui import BoardGUI
 
+# window & layout constants
 SCREEN_W, SCREEN_H = 1080, 720
-SIDE_PANEL_W = 320
-TOP_BAR_H = 60
-BOTTOM_BAR_H = 80
+SIDE_PANEL_W    = 320
+TOP_BAR_H       = 60
+BOTTOM_BAR_H    = 80
 
+# the rectangle in which we'll draw the board
 BOARD_RECT = pygame.Rect(
     0,
     TOP_BAR_H,
@@ -27,11 +29,13 @@ BOARD_RECT = pygame.Rect(
     SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H
 )
 
-POACHER_INTERVAL = 20.0        # seconds between automatic spawns
+# how fast new poachers spawn
+POACHER_INTERVAL = 20.0
+# maximum concurrently on board
 MAX_POACHERS     = 6
 
-# How many real‐seconds equal one in‐game day
-GAME_SECONDS_PER_DAY = 5.0
+# how many real seconds = one in-game day
+GAME_SEC_PER_DAY = 5.0
 
 
 class GameGUI:
@@ -40,68 +44,63 @@ class GameGUI:
         self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
         pygame.display.set_caption("Safari – prototype")
 
-        # Difficulty
+        # Difficulty‐based parameters
         self.difficulty = difficulty
-
-        # MODEL --------------------------------------------------------------
         if difficulty == DifficultyLevel.EASY:
-            init_balance = 1500.0
-            self._poacher_interval = 30.0
+            init_balance      = 1500.0
+            self._poacher_ivl = 30.0
             self._max_poachers = 4
         elif difficulty == DifficultyLevel.NORMAL:
-            init_balance = 1000.0
-            self._poacher_interval = 20.0
+            init_balance      = 1000.0
+            self._poacher_ivl = 20.0
             self._max_poachers = 6
-        else:  # HARD
-            init_balance = 500.0
-            self._poacher_interval = 10.0
+        else:
+            init_balance      =  500.0
+            self._poacher_ivl = 10.0
             self._max_poachers = 8
 
+        # MODEL
         self.board   = Board(45, 40)
         self.capital = Capital(init_balance)
 
-        # Timer (for day/night cycle)
+        # our global timer
         self.timer = Timer()
-
-        # track real‐time to map into game days
+        self._poacher_timer = 0.0
         self.elapsed_real_seconds = 0.0
 
-        # VIEW ---------------------------------------------------------------
+        # VIEW
         self.board_gui = BoardGUI(self.board)
 
-        # UI state
+        # UI fonts
         self.font_small  = pygame.font.SysFont("Verdana", 16)
         self.font_medium = pygame.font.SysFont("Verdana", 20)
         self.font_large  = pygame.font.SysFont("Verdana", 28, bold=True)
 
+        # shop & feedback state
         self.running        = True
-        self.feedback: str  = ""
+        self.feedback       = ""
         self.feedback_timer = 0.0
         self.feedback_alpha = 0
-
-        # shop definitions
-        self.shop_items: List[Dict] = [
+        self.shop_items     = [
             {"name": "Ranger", "cost": 150},
-            {"name": "Plant",  "cost": 20},
+            {"name": "Plant",  "cost":  20},
             {"name": "Pond",   "cost": 200},
         ]
-        self.item_rects: List[pygame.Rect] = []
+        self.item_rects = []
         self.hover_item = -1
 
-        # timers
-        self.timer = Timer()
-        self._poacher_timer = 0.0
-
-        # seed one ranger
+        # start with a single ranger
         self._spawn_ranger()
 
-    # ------------------------------------------------------------------ main
-    def run(self):
-        while self.running:
-            raw_dt = self.timer.tick()
-            dt = min(raw_dt, 0.02)
 
-            # accumulate real seconds
+    def run(self):
+        """Main loop."""
+        while self.running:
+            # tick() both returns the real‐dt and internally advances game‐time
+            raw_dt = self.timer.tick()
+            dt     = min(raw_dt, 0.02)  # clamp to avoid large jumps
+
+            # accumulate real seconds if you need them
             self.elapsed_real_seconds += dt
 
             self._handle_events()
@@ -111,7 +110,9 @@ class GameGUI:
         pygame.quit()
         sys.exit()
 
-    # ------------------------------------------------------------ event loop
+
+    # ————————————————————————————————————————————————————————————————————— Event Handling
+
     def _handle_events(self):
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
@@ -127,7 +128,7 @@ class GameGUI:
                     if r.collidepoint(ev.pos):
                         self._buy_item(i)
 
-    # ------------------------------------------------------------- buy logic
+
     def _buy_item(self, index: int):
         item = self.shop_items[index]
         if self.capital.deductFunds(item["cost"]):
@@ -141,22 +142,24 @@ class GameGUI:
         else:
             self._show_feedback("Insufficient funds!")
 
-    # ----------------------------------------------------------- world spawn
+
+    # ————————————————————————————————————————————————————————————————————— Spawning
+
     def _random_tile(self) -> Vector2:
         return Vector2(
-            random.randint(0, self.board.width - 1),
+            random.randint(0, self.board.width  - 1),
             random.randint(0, self.board.height - 1)
         )
 
     def _spawn_ranger(self):
         rid = len(self.board.rangers) + 1
-        ranger = Ranger(
+        r = Ranger(
             rid,
             f"R{rid}",
             salary=50,
             position=self._random_tile()
         )
-        self.board.rangers.append(ranger)
+        self.board.rangers.append(r)
 
     def _spawn_poacher(self):
         pid = len(self.board.poachers) + 1
@@ -181,23 +184,25 @@ class GameGUI:
             "Pond", 0, 0, 0, 0
         ))
 
-    # ------------------------------------------------------------------ tick
+
+    # ————————————————————————————————————————————————————————————————————— Simulation Update
+
     def _update_sim(self, dt: float):
-        # update day/night cycle
+        # advance the day–night cycle in the view
         self.board_gui.update_day_night(dt)
 
-        # auto‑spawn poachers
+        # automatically spawn new poachers up to the limit
         if len(self.board.poachers) < self._max_poachers:
             self._poacher_timer += dt
-            if self._poacher_timer >= self._poacher_interval:
+            if self._poacher_timer >= self._poacher_ivl:
                 self._poacher_timer = 0.0
                 self._spawn_poacher()
 
-        # update poachers
+        # move each poacher
         for p in self.board.poachers:
             p.update(dt, (self.board.width, self.board.height))
 
-        # rangers AI
+        # simple ranger AI: chase + eliminate
         for r in self.board.rangers:
             visible = [p for p in self.board.poachers if p.is_visible_to(r)]
             if visible:
@@ -208,7 +213,7 @@ class GameGUI:
             else:
                 r.patrol(self.board.width, self.board.height)
 
-        # feedback fade
+        # fade out any feedback message
         if self.feedback_timer > 0:
             self.feedback_timer -= dt
             self.feedback_alpha = int(255 * min(1.0, self.feedback_timer * 2))
@@ -216,17 +221,15 @@ class GameGUI:
             self.feedback_alpha = 0
             self.feedback       = ""
 
-    # ------------------------------------------------------------------ draw
+
+    # ————————————————————————————————————————————————————————————————————— Rendering
+
     def _draw(self):
+        # background
         self.screen.fill((40, 45, 50))
 
         # board area
-        board_rect = pygame.Rect(
-            0, TOP_BAR_H,
-            SCREEN_W - SIDE_PANEL_W,
-            SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H
-        )
-        self.board_gui.render(self.screen, board_rect)
+        self.board_gui.render(self.screen, BOARD_RECT)
 
         # UI panels
         self._draw_top_bar()
@@ -236,90 +239,89 @@ class GameGUI:
 
         pygame.display.flip()
 
-    # ---------- UI draw helpers --------------------------------------
+
     def _draw_top_bar(self):
         margin, box_h, radius = 10, 30, 8
-        default_options = {
-            "from_right": False,
-            "background_color": (60, 60, 232)
-        }
-        def draw_box(text_str, x_pos, options=None):
-            options = {**default_options, **(options or {})}
+        default_opts = {"from_right": False, "background_color": (60, 60, 232)}
 
-            text = self.font_medium.render(text_str, True, (255, 255, 255))
-            box_w = text.get_size()[0] + 20
-            rect_x = (SCREEN_W - x_pos - box_w) if options["from_right"] else x_pos
-            rect = pygame.Rect(rect_x, (TOP_BAR_H - box_h) // 2, box_w, box_h)
-            # draw fill and border
-            pygame.draw.rect(self.screen, options["background_color"], rect, border_radius=radius)
-            pygame.draw.rect(self.screen, (255, 255, 255), rect, 2, border_radius=radius)
-            # draw text
-            self.screen.blit(text, (rect_x + 10, rect.y + (box_h - text.get_height()) // 2))
+        def draw_box(txt, x_pos, opts=None):
+            opts = {**default_opts, **(opts or {})}
+            surf = self.font_medium.render(txt, True, (255, 255, 255))
+            box_w = surf.get_width() + 20
+            rect_x = (SCREEN_W - x_pos - box_w) if opts["from_right"] else x_pos
+            rect = pygame.Rect(rect_x, (TOP_BAR_H - box_h)//2, box_w, box_h)
+            pygame.draw.rect(self.screen, opts["background_color"], rect, border_radius=radius)
+            pygame.draw.rect(self.screen, (255,255,255), rect, 2, border_radius=radius)
+            self.screen.blit(surf, (rect_x + 10, rect.y + (box_h - surf.get_height())//2))
             return box_w
-        
-        # draw the labels
-        pygame.draw.rect(self.screen,(60,70,90),(0,0,SCREEN_W,TOP_BAR_H))
 
-        x_pos = margin
-        for label in [
-            f"Tourists: {len(self.board.tourists)}",
-            f"Animals: {len(self.board.animals)}",
-        ]:
-            width = draw_box(label, x_pos)
-            x_pos += width + margin
+        # fill bar
+        pygame.draw.rect(self.screen, (60,70,90), (0,0,SCREEN_W, TOP_BAR_H))
+        # show tourist & animal counts
+        x = margin
+        for label in [f"Tourists: {len(self.board.tourists)}",
+                      f"Animals:   {len(self.board.animals)}"]:
+            w = draw_box(label, x)
+            x += w + margin
 
+        # capital on right
         draw_box(f"Capital: ${self.capital.getBalance():.0f}", margin, {
-            "from_right": True,
-            "background_color": (0, 100, 0)
+            "from_right": True, "background_color": (0,100,0)
         })
+
 
     def _draw_bottom_bar(self):
         margin, oval_h = 20, 50
-        def draw_oval(text_str, x_pos):
-            text = self.font_medium.render(text_str, True, (255, 255, 255))
-            oval_w = text.get_width() + 40
-            rect = pygame.Rect(x_pos, (
-                SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - oval_h) // 2
-            ), oval_w, oval_h)
-            # draw box
-            pygame.draw.ellipse(self.screen, (40, 45, 60), rect)
-            pygame.draw.ellipse(self.screen, (255, 255, 255), rect, 2)
-            # draw fill
-            self.screen.blit(text,(
-                rect.x + (rect.width - text.get_width()) // 2,
-                rect.y + (rect.height - text.get_height()) // 2
+        def draw_oval(txt, x_pos):
+            surf = self.font_medium.render(txt, True, (255,255,255))
+            o_w = surf.get_width() + 40
+            rect = pygame.Rect(
+                x_pos,
+                (SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - oval_h)//2),
+                o_w, oval_h
+            )
+            pygame.draw.ellipse(self.screen, (40,45,60), rect)
+            pygame.draw.ellipse(self.screen, (255,255,255), rect, 2)
+            self.screen.blit(surf, (
+                rect.x + (rect.width - surf.get_width())//2,
+                rect.y + (rect.height - surf.get_height())//2
             ))
-            return oval_w
+            return o_w
 
-        pygame.draw.rect(self.screen, (60, 70, 90), 
-                        (0, SCREEN_H - BOTTOM_BAR_H, SCREEN_W - SIDE_PANEL_W, BOTTOM_BAR_H))
+        # fill
+        pygame.draw.rect(self.screen, (60,70,90),
+                         (0, SCREEN_H - BOTTOM_BAR_H,
+                          SCREEN_W - SIDE_PANEL_W,
+                          BOTTOM_BAR_H))
 
-        # get time data
+        # get date/time from timer
         date, time_str = self.timer.get_date_time()
-        game_time = self.timer.get_game_time()
-        
-        x_pos = margin
-        for time_unit, time in list(game_time.items())[:4]:
-            width = draw_oval(f"{time_unit}: {time}", x_pos)
-            x_pos += width + margin
+        game_time      = self.timer.get_game_time()
 
-        # draw date/time boxes
-        box_y = (SCREEN_H - BOTTOM_BAR_H) + (BOTTOM_BAR_H - 30 * 2 - 4) // 2
-        box_x = SCREEN_W - SIDE_PANEL_W - 120 - 20
-        for i, (text, y_offset) in enumerate([(date, 0), (time_str, 34)]):
-            rect = pygame.Rect(box_x, box_y + y_offset, 120, 30)
+        x = margin
+        for unit, val in list(game_time.items())[:4]:
+            w = draw_oval(f"{unit}: {val}", x)
+            x += w + margin
+
+        # draw date/time boxes on the far right
+        box_y = (SCREEN_H - BOTTOM_BAR_H) + (BOTTOM_BAR_H - 64)//2
+        box_x = SCREEN_W - SIDE_PANEL_W - 140
+        for i, txt in enumerate((date, time_str)):
+            rect = pygame.Rect(box_x, box_y + i*34, 120, 30)
             pygame.draw.rect(self.screen, (153,101,21), rect, border_radius=4)
-            pygame.draw.rect(self.screen, (255, 255, 255), rect, 2, border_radius=4)
-            text_surf = self.font_medium.render(text, True, (255, 255, 255))
-            self.screen.blit(text_surf, (
-                rect.x + (rect.width - text_surf.get_width()) // 2,
-                rect.y + (rect.height - text_surf.get_height()) // 2
+            pygame.draw.rect(self.screen, (255,255,255), rect, 2, border_radius=4)
+            surf = self.font_medium.render(txt, True, (255,255,255))
+            self.screen.blit(surf, (
+                rect.x + (rect.width - surf.get_width())//2,
+                rect.y + (rect.height - surf.get_height())//2
             ))
+
 
     def _draw_side_panel(self):
         px, py = SCREEN_W - SIDE_PANEL_W, TOP_BAR_H
-        pygame.draw.rect(self.screen, (70, 80, 100), (px, py, SIDE_PANEL_W, SCREEN_H - py))
-        title = self.font_medium.render("Shop", True, (255, 255, 255))
+        pygame.draw.rect(self.screen, (70,80,100),
+                         (px, py, SIDE_PANEL_W, SCREEN_H - py))
+        title = self.font_medium.render("Shop", True, (255,255,255))
         self.screen.blit(title, (px + 20, py + 10))
 
         self.item_rects.clear()
@@ -327,19 +329,22 @@ class GameGUI:
         for i, item in enumerate(self.shop_items):
             rect = pygame.Rect(px + 20, y, SIDE_PANEL_W - 40, 36)
             self.item_rects.append(rect)
-            color = (80, 110, 160) if i == self.hover_item else (90, 100, 120)
-            pygame.draw.rect(self.screen, color, rect, border_radius=4)
-            txt = self.font_small.render(f"{item['name']}: ${item['cost']}", True, (255, 255, 255))
+            col = (80,110,160) if i == self.hover_item else (90,100,120)
+            pygame.draw.rect(self.screen, col, rect, border_radius=4)
+            txt = self.font_small.render(f"{item['name']}: ${item['cost']}", True, (255,255,255))
             self.screen.blit(txt, (rect.x + 8, rect.y + 6))
             y += 44
 
+
     def _draw_feedback(self):
-        if self.feedback_alpha<=0: return
-        surf = self.font_medium.render(self.feedback,True,(128,0,0))
+        if self.feedback_alpha <= 0:
+            return
+        surf = self.font_medium.render(self.feedback, True, (128,0,0))
         surf.set_alpha(self.feedback_alpha)
-        x = (SCREEN_W-surf.get_width())//2
+        x = (SCREEN_W - surf.get_width()) // 2
         y = SCREEN_H - BOTTOM_BAR_H - surf.get_height() - 20
-        self.screen.blit(surf,(x,y))
+        self.screen.blit(surf, (x,y))
+
 
     def _show_feedback(self, msg: str):
         self.feedback       = msg
