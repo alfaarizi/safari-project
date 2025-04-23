@@ -10,7 +10,7 @@ test_job:
     - poetry install
     - poetry run pytest --cov=src --cov-report=term
     - poetry install --with dev
-    - poetry run ruff .
+    - poetry run ruff check .
 
 lint_job:
   stage: lint
