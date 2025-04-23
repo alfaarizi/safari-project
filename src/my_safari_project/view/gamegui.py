@@ -57,7 +57,7 @@ class GameGUI:
             self._poacher_interval = 10.0
             self._max_poachers = 8
 
-        self.board   = Board(25, 25)
+        self.board   = Board(45, 40)
         self.capital = Capital(init_balance)
 
         # Timer (for day/night cycle)
@@ -184,7 +184,6 @@ class GameGUI:
     # ------------------------------------------------------------------ tick
     def _update_sim(self, dt: float):
         # update day/night cycle
-        self.timer.updateTime(dt)
         self.board_gui.update_day_night(dt)
 
         # auto‑spawn poachers
@@ -225,7 +224,7 @@ class GameGUI:
         board_rect = pygame.Rect(
             0, TOP_BAR_H,
             SCREEN_W - SIDE_PANEL_W,
-            SCREEN_H - TOP_BAR_H
+            SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H
         )
         self.board_gui.render(self.screen, board_rect)
 
