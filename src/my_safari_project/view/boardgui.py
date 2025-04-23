@@ -1,139 +1,131 @@
+from __future__ import annotations
 import os
-from typing import Tuple
+from typing import Tuple, List
+
 import pygame
-from pygame import Surface
+from pygame import Surface, Rect
 from pygame.math import Vector2
+
 from my_safari_project.model.board import Board
+from my_safari_project.model.road  import Road
 
 
 class BoardGUI:
-    """Renders Board into a supplied Rect."""
-
-    # ---------- helpers --------------------------------------------------
+    # ------------------------------------------------ static helpers
     @staticmethod
     def _lerp(c1: Tuple[int, int, int, int],
-              c2: Tuple[int, int, int, int], t: float) -> Tuple[int, int, int, int]:
+              c2: Tuple[int, int, int, int],
+              t: float) -> Tuple[int, int, int, int]:
         return tuple(int(a + (b - a) * t) for a, b in zip(c1, c2))
 
-    def __init__(self, board: Board, tile=32):
+    # ------------------------------------------------ ctor / assets
+    def __init__(self, board: Board):
         self.board = board
-        self.tile = tile          # will be recalculated each frame
-        self._load_images()
+        self.tile  = 32   # will be recalculated each frame
+
+        self._load_assets()
 
         # day / night
         self._dn_enabled = True
-        self._dn_timer = 0.0        # seconds
-        self._dn_period = 8 * 60    # 8 min = 5 day + 3 night – same as before
-        self.dn_opacity = 0.0
+        self._dn_timer   = 0.0          # seconds
+        self._dn_period  = 8 * 60       # 8-min real-time cycle
+        self.dn_opacity  = 0.0
 
-    # ---------- asset loading -------------------------------------------
     def _load_img(self, root: str, name: str, alpha=True) -> Surface:
         for ext in ("png", "jpg", "jpeg"):
             path = os.path.join(root, f"{name}.{ext}")
             if os.path.exists(path):
-                img = pygame.image.load(path)
-                return img.convert_alpha() if alpha else img.convert()
-        s = pygame.Surface((self.tile, self.tile),
+                surf = pygame.image.load(path)
+                return surf.convert_alpha() if alpha else surf.convert()
+        # 1 × 1 fall-back
+        s = pygame.Surface((1, 1),
                            pygame.SRCALPHA if alpha else 0)
         s.fill((200, 200, 200, 180) if alpha else (200, 200, 200))
         return s
 
-    def _load_images(self):
-        base = os.path.dirname(__file__)
-        imgs = os.path.join(base, "images")
-        self.desert = self._load_img(imgs, "desert", alpha=False)
-        self.plant  = self._load_img(imgs, "plant")
-        self.pond   = self._load_img(imgs, "pond")
-        self.jeep   = self._load_img(imgs, "jeep")
-        self.ranger = self._load_img(imgs, "ranger")
-        self.poacher = self._load_img(imgs, "poacher")
+    def _load_assets(self):
+        root = os.path.join(os.path.dirname(__file__), "images")
+        self.desert  = self._load_img(root, "desert",  alpha=False)
+        self.plant   = self._load_img(root, "plant")
+        self.pond    = self._load_img(root, "pond")
+        self.jeep    = self._load_img(root, "jeep")
+        self.ranger  = self._load_img(root, "ranger")
+        self.poacher = self._load_img(root, "poacher")
 
-    # ---------- public API ----------------------------------------------
+    # ------------------------------------------------ public helpers
     def update_day_night(self, dt: float):
         if not self._dn_enabled:
             return
         self._dn_timer = (self._dn_timer + dt) % self._dn_period
         t = self._dn_timer
-        if t < 270:
-            self.dn_opacity = 0.0            # pure day
-        elif t < 300:
-            self.dn_opacity = (t - 270) / 30  # dusk
-        elif t < 450:
-            self.dn_opacity = 1.0            # night
-        else:
-            self.dn_opacity = 1 - ((t - 450) / 30)  # dawn
+        if   t < 270:  self.dn_opacity = 0.0
+        elif t < 300:  self.dn_opacity = (t - 270) / 30
+        elif t < 450:  self.dn_opacity = 1.0
+        else:          self.dn_opacity = 1.0 - ((t - 450) / 30)
 
-    def render(self, screen: Surface, rect: pygame.Rect):
+    # ------------------------------------------------ main render
+    def render(self, screen: Surface, rect: Rect):
         x0, y0, w, h = rect
-        cols, rows = self.board.width, self.board.height
+        cols, rows   = self.board.width, self.board.height
+        if cols <= 0 or rows <= 0:
+            return
 
-        # keep square tiles
+        # keep tiles square and as large as possible
         self.tile = side = max(4, min(w // cols, h // rows))
+
         BW, BH = cols * side, rows * side
         ox = x0 + (w - BW) // 2
         oy = y0 + (h - BH) // 2
 
-        # 1- desert
-        bg = pygame.transform.scale(self.desert, (BW, BH))
-        screen.blit(bg, (ox, oy))
+        # 1 – desert bg
+        screen.blit(pygame.transform.scale(self.desert, (BW, BH)), (ox, oy))
 
-        # 2- roads ---------------------------------------------------------
-        road_col = (105, 105, 105)
-        road_thk = side * 2
+        # 2 – roads (each Road.pos is the *top-left* cell of that road tile)
+        road_colour = (105, 105, 105)
+        for r in self.board.roads:           # type: Road
+            px = ox + int(r.pos.x * side)
+            py = oy + int(r.pos.y * side)
+            pygame.draw.rect(screen, road_colour,
+                             (px, py, side, side))
 
-        for road in self.board.roads:
-            if hasattr(road, "points") and road.points and len(road.points) >= 2:
-                # cell list -> draw filled rect per cell so it’s very visible
-                for p in road.points:
-                    cx, cy = int(p.x), int(p.y)
-                    pygame.draw.rect(screen, road_col,
-                                     (ox + cx * side, oy + cy * side,
-                                      side, side))
-            else:
-                sp = getattr(road, "start_point", None)
-                ep = getattr(road, "end_point", None)
-                if sp is None or ep is None:
-                    continue
-                x1 = ox + int(sp[0] * side + side / 2)
-                y1 = oy + int(sp[1] * side + side / 2)
-                x2 = ox + int(ep[0] * side + side / 2)
-                y2 = oy + int(ep[1] * side + side / 2)
-                pygame.draw.line(screen, road_col, (x1, y1), (x2, y2), road_thk)
-
-        # 3- ponds ---------------------------------------------------------
-        PW, PH = int(side * 1.5), int(side * 1.2)
+        # 3 – ponds (1.5 × 1.2)
+        pw, ph = int(side * 1.5), int(side * 1.2)
         for pond in self.board.ponds:
-            loc = getattr(pond, "location", Vector2(0, 0))
-            screen.blit(pygame.transform.scale(self.pond, (PW, PH)),
-                        (ox + int(loc.x * side), oy + int(loc.y * side)))
+            loc = pond.location
+            screen.blit(pygame.transform.scale(self.pond, (pw, ph)),
+                        (ox + int(loc.x * side),
+                         oy + int(loc.y * side)))
 
-        # 4- plants --------------------------------------------------------
-        GW, GH = side, int(side * 1.2)
+        # 4 – plants (1.0 × 1.2, bottom-aligned)
+        gw, gh = side, int(side * 1.2)
         for plant in self.board.plants:
-            loc = getattr(plant, "location", Vector2(0, 0))
+            loc = plant.location
             px = ox + int(loc.x * side)
-            py = oy + int(loc.y * side - (GH - side))
-            screen.blit(pygame.transform.scale(self.plant, (GW, GH)), (px, py))
+            py = oy + int(loc.y * side - (gh - side))
+            screen.blit(pygame.transform.scale(self.plant, (gw, gh)), (px, py))
 
-        # 5- jeeps (2×2) ---------------------------------------------------
+        # 5 – jeeps (2 × 2 cells, centred on path centre)
         JW = JH = side * 2
         for jeep in self.board.jeeps:
-            loc = getattr(jeep, "position", Vector2(0, 0))
-            jx = ox + int(loc.x * side - side / 2)
-            jy = oy + int(loc.y * side - side / 2)
-            screen.blit(pygame.transform.scale(self.jeep, (JW, JH)), (jx, jy))
+            center = jeep.position            # already *centre of tile*
+            jx = ox + int(center.x * side - side)
+            jy = oy + int(center.y * side - side)
+            screen.blit(pygame.transform.scale(self.jeep, (JW, JH)),
+                        (jx, jy))
 
-        # 6- rangers / poachers -------------------------------------------
-        for r in self.board.rangers:
-            loc = getattr(r, "position", Vector2(0, 0))
+        # 6 – rangers / poachers (1 × 1)
+        for ranger in self.board.rangers:
+            loc = ranger.position
             screen.blit(pygame.transform.scale(self.ranger, (side, side)),
-                        (ox + int(loc.x * side), oy + int(loc.y * side)))
-        for p in self.board.poachers:
-            loc = getattr(p, "position", Vector2(0, 0))
+                        (ox + int(loc.x * side),
+                         oy + int(loc.y * side)))
+        for po in self.board.poachers:
+            loc = po.position
             screen.blit(pygame.transform.scale(self.poacher, (side, side)),
-                        (ox + int(loc.x * side), oy + int(loc.y * side)))
+                        (ox + int(loc.x * side),
+                         oy + int(loc.y * side)))
 
-        # 7- grid + border -------------------------------------------------
+        # 7 – thin grid & border
         pygame.draw.rect(screen, (128, 128, 128), (ox, oy, BW, BH), 2)
         for c in range(cols + 1):
             pygame.draw.line(screen, (0, 0, 0),
@@ -144,9 +136,11 @@ class BoardGUI:
                              (ox, oy + r * side),
                              (ox + BW, oy + r * side), 1)
 
-        # 8- day / night tint ---------------------------------------------
-        if self.dn_opacity > 0:
-            tint = self._lerp((255, 255, 255, 0), (0, 0, 70, 160), self.dn_opacity)
+        # 8 – day/night overlay
+        if self.dn_opacity > 0.0:
+            tint = self._lerp((255, 255, 255, 0),
+                              (0, 0, 70, 160),
+                              self.dn_opacity)
             ov = pygame.Surface((BW, BH), pygame.SRCALPHA)
             ov.fill(tint)
             screen.blit(ov, (ox, oy))
