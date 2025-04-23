@@ -1,42 +1,32 @@
-import pygame
+import os
 import sys
 import tkinter as tk
 from tkinter import filedialog
 
-
-from my_safari_project.control.game_controller import DifficultyLevel
+import pygame
+from my_safari_project.control.game_controller import DifficultyLevel, GameController
+from my_safari_project.view.gamegui import GameGUI
+from my_safari_project.view.boardgui import BoardGUI
 
 pygame.init()
 pygame.mixer.init()
 
 # Fonts
-font_main = pygame.font.SysFont("Comic Sans MS", 36)
-font_small = pygame.font.SysFont("Comic Sans MS", 28)
+font_main   = pygame.font.SysFont("Comic Sans MS", 36)
+font_small  = pygame.font.SysFont("Comic Sans MS", 28)
 safari_font = pygame.font.Font("assets/Anton.ttf", 82)
 
 # Colors
-WHITE = (255, 255, 255)
-YELLOW = (122, 185, 91)
-PASTEL_YELLOW = (255, 255, 200)
-PASTEL_PINK = (90, 100, 120)
-BUTTON_COLOR = (90, 100, 120)
-BUTTON_TEXT = (255, 255, 255)
-HIGHLIGHT = (128, 200, 60)
-SIDEBAR_COLOR = (50, 50, 50)
+WHITE          = (255, 255, 255)
+YELLOW         = (122, 185, 91)
+PASTEL_YELLOW  = (255, 255, 200)
+PASTEL_PINK    = (90, 100, 120)
+BUTTON_COLOR   = (90, 100, 120)
+BUTTON_TEXT    = (255, 255, 255)
+HIGHLIGHT      = (128, 200, 60)
+SIDEBAR_COLOR  = (50, 50, 50)
 
 # Screen setup
-from my_safari_project.view.boardgui import BoardGUI
-from my_safari_project.control.game_controller import GameController
-from my_safari_project.view.gamegui import GameGUI
-
-# Initialize Pygame modules
-pygame.init()
-pygame.mixer.init()
-
-font_main = pygame.font.SysFont("Comic Sans MS", 36)
-font_small = pygame.font.SysFont("Comic Sans MS", 28)
-
-# Set screen dimensions to 1080x720
 WIDTH, HEIGHT = 1080, 720
 screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
 pygame.display.set_caption("Safari Game Menu")
@@ -48,93 +38,67 @@ pygame.mixer.music.load("assets/menu_music.mp3")
 pygame.mixer.music.set_volume(0.5)
 pygame.mixer.music.play(-1)
 
-# Colors
-WHITE = (255, 255, 255)
-LIGHT_GREEN = (173, 255, 47)
-PASTEL_YELLOW = (255, 255, 200)
-PASTEL_PINK = (90, 100, 120)
-BUTTON_COLOR = (90, 100, 120)
-BUTTON_TEXT = (255, 255, 255)
-HIGHLIGHT = (128, 200, 60)
-SIDEBAR_COLOR = (50, 50, 50)  # Solid sidebar background
-
 # Difficulty settings
-difficulty_levels = [DifficultyLevel.EASY, DifficultyLevel.NORMAL, DifficultyLevel.HARD]
-selected_difficulty = 1  # default to Normal
+difficulty_levels    = [DifficultyLevel.EASY, DifficultyLevel.NORMAL, DifficultyLevel.HARD]
+selected_difficulty  = 1  # default to Normal
 fullscreen = False
 
-def draw_background_cover(surface, image, x, y, w, h):
-    orig_width, orig_height = image.get_size()
-    scale_factor = max(w / orig_width, h / orig_height)
-    new_width = int(orig_width * scale_factor)
-    new_height = int(orig_height * scale_factor)
-    scaled_image = pygame.transform.smoothscale(image, (new_width, new_height))
-    offset_x = x + (w - new_width) // 2
-    offset_y = y + (h - new_height) // 2
-    surface.blit(scaled_image, (offset_x, offset_y))
+def draw_background_cover(surface, img, x, y, w, h):
+    orig_w, orig_h = img.get_size()
+    sf = max(w/orig_w, h/orig_h)
+    nw, nh = int(orig_w*sf), int(orig_h*sf)
+    scaled = pygame.transform.smoothscale(img, (nw, nh))
+    ox = x + (w - nw)//2
+    oy = y + (h - nh)//2
+    surface.blit(scaled, (ox, oy))
 
-def draw_safari_title(center_x, center_y):
-    text_surface = safari_font.render("Safari", True, YELLOW)
-    rect = text_surface.get_rect(center=(center_x, center_y + 80))
-    screen.blit(text_surface, rect)
+def draw_safari_title(cx, cy):
+    ts = safari_font.render("Safari", True, YELLOW)
+    rect = ts.get_rect(center=(cx, cy+80))
+    screen.blit(ts, rect)
 
-def scale_and_draw_image(surface, image, x, y, w, h):
-    """
-    Scales and draws 'image' to fill the rectangle (x, y, w, h) completely,
-    preserving aspect ratio and cropping as needed (cover approach).
-    """
-    orig_width, orig_height = image.get_size()
-    # Determine the scaling factor to fully cover the area without black bars
-    scale_factor = max(w / orig_width, h / orig_height)
-    new_width = int(orig_width * scale_factor)
-    new_height = int(orig_height * scale_factor)
-
-    scaled_image = pygame.transform.smoothscale(image, (new_width, new_height))
-    # Center the scaled image within the target rectangle
-    offset_x = x + (w - new_width) // 2
-    offset_y = y + (h - new_height) // 2
-
-    surface.blit(scaled_image, (offset_x, offset_y))
-
+def scale_and_draw_image(surface, img, x, y, w, h):
+    orig_w, orig_h = img.get_size()
+    sf = max(w/orig_w, h/orig_h)
+    nw, nh = int(orig_w*sf), int(orig_h*sf)
+    scaled = pygame.transform.smoothscale(img, (nw, nh))
+    ox = x + (w - nw)//2
+    oy = y + (h - nh)//2
+    surface.blit(scaled, (ox, oy))
 
 class Button:
-    def __init__(self, text, x, y, width, height, callback):
-        self.text = text
-        self.rect = pygame.Rect(x, y, width, height)
-        self.callback = callback
+    def __init__(self, text, x, y, w, h, cb):
+        self.text     = text
+        self.rect     = pygame.Rect(x, y, w, h)
+        self.callback = cb
 
     def draw(self):
         pygame.draw.rect(screen, BUTTON_COLOR, self.rect, border_radius=12)
         pygame.draw.rect(screen, HIGHLIGHT, self.rect, 2, border_radius=12)
-        text_surf = font_main.render(self.text, True, BUTTON_TEXT)
-        screen.blit(text_surf, text_surf.get_rect(center=self.rect.center))
+        ts = font_main.render(self.text, True, BUTTON_TEXT)
+        screen.blit(ts, ts.get_rect(center=self.rect.center))
 
     def is_clicked(self, pos):
         return self.rect.collidepoint(pos)
 
 def draw_difficulty_selector(left_x, top_y):
-    spacing = 10
-    button_width = 110
-    button_height = 50
+    spacing, bw, bh = 10, 110, 50
     for i, level in enumerate(difficulty_levels):
-        x = left_x + i * (button_width + spacing)
-        rect = pygame.Rect(x, top_y, button_width, button_height)
-        color = HIGHLIGHT if i == selected_difficulty else BUTTON_TEXT
-        bg_color = PASTEL_YELLOW if i == selected_difficulty else PASTEL_PINK
-        pygame.draw.rect(screen, bg_color, rect, border_radius=10)
+        x = left_x + i*(bw+spacing)
+        rect = pygame.Rect(x, top_y, bw, bh)
+        bg = PASTEL_YELLOW if i==selected_difficulty else PASTEL_PINK
+        col = HIGHLIGHT    if i==selected_difficulty else BUTTON_TEXT
+        pygame.draw.rect(screen, bg, rect, border_radius=10)
         pygame.draw.rect(screen, HIGHLIGHT, rect, 2, border_radius=10)
-        text = font_small.render(level.value, True, color)
-        screen.blit(text, text.get_rect(center=rect.center))
+        ts = font_small.render(level.value, True, col)
+        screen.blit(ts, ts.get_rect(center=rect.center))
 
 def handle_difficulty_click(pos, left_x, top_y):
     global selected_difficulty
-    spacing = 10
-    button_width = 110
-    button_height = 50
+    spacing, bw, bh = 10, 110, 50
     for i in range(len(difficulty_levels)):
-        x = left_x + i * (button_width + spacing)
-        rect = pygame.Rect(x, top_y, button_width, button_height)
-        if rect.collidepoint(pos):
+        x = left_x + i*(bw+spacing)
+        if pygame.Rect(x, top_y, bw, bh).collidepoint(pos):
             selected_difficulty = i
             print("Selected difficulty:", difficulty_levels[i].value)
 
@@ -149,14 +113,14 @@ def toggle_fullscreen():
 
 def main_menu():
     global WIDTH, HEIGHT
-    btn_width, btn_height = 250, 60
-    margin_right = 50
-    sidebar_width = 400
+
+    btn_w, btn_h    = 250, 60
+    margin_right    = 50
+    sidebar_width   = 400
 
     def new_game():
         difficulty = difficulty_levels[selected_difficulty]
-        print(f"Starting game with difficulty: {difficulty.value}")
-        width, height = screen.get_size()
+        print(f"Starting new game at {difficulty.value}")
         pygame.mixer.music.stop()
         pygame.quit()
         gui = GameGUI(difficulty)
@@ -166,13 +130,25 @@ def main_menu():
         root = tk.Tk()
         root.withdraw()
         file_path = filedialog.askopenfilename(
-            title="Select a saved game file",
-            filetypes=[("Save Files", "*.sav *.json *.txt"), ("All Files", "*.*")]
+            title="Select save JSON",
+            filetypes=[("Save JSON Files","*.json"),("All Files","*.*")]
         )
-        if file_path:
-            print(f"Selected save file: {file_path}")
-        else:
+        if not file_path:
             print("No file selected.")
+            return
+
+        base, ext = os.path.splitext(file_path)
+        save_base = base  # strip .json
+        controller = GameController(0, 0, 0.0, difficulty_levels[selected_difficulty])
+        success = controller.load_game(save_base)
+        if success:
+            print("Loaded save:", save_base)
+            pygame.mixer.music.stop()
+            pygame.quit()
+            gui = GameGUI(controller)
+            gui.run()
+        else:
+            print("Failed to load game.")
 
     def quit_game():
         pygame.mixer.music.stop()
@@ -180,66 +156,55 @@ def main_menu():
         sys.exit()
 
     buttons = [
-        Button("New Game", 0, 0, btn_width, btn_height, new_game),
-        Button("Load Game", 0, 0, btn_width, btn_height, load_game),
-        Button("Quit", 0, 0, btn_width, btn_height, quit_game)
+        Button("New Game", 0, 0, btn_w, btn_h, new_game),
+        Button("Load Game",0, 0, btn_w, btn_h, load_game),
+        Button("Quit",     0, 0, btn_w, btn_h, quit_game)
     ]
 
     while True:
         WIDTH, HEIGHT = screen.get_size()
+        avail_w = WIDTH - sidebar_width
 
-        # Determine space for background (left portion) and draw it
-        available_width = WIDTH - sidebar_width
-        available_height = HEIGHT
+        # Background
+        draw_background_cover(screen, background, 0, 0, avail_w, HEIGHT)
 
-        # Fill that left area with the background (cover approach)
-        draw_background_cover(screen, background, 0, 0, available_width, available_height)
+        # Sidebar
+        sidebar = pygame.Rect(avail_w, 0, sidebar_width, HEIGHT)
+        pygame.draw.rect(screen, SIDEBAR_COLOR, sidebar)
 
-        # Draw sidebar on the right
-        sidebar_rect = pygame.Rect(WIDTH - sidebar_width, 0, sidebar_width, HEIGHT)
-        pygame.draw.rect(screen, SIDEBAR_COLOR, sidebar_rect)
+        # Title
+        draw_safari_title(avail_w//2, HEIGHT//2 - 120)
+        hdr = font_main.render("Main Menu", True, WHITE)
+        screen.blit(hdr, hdr.get_rect(center=(avail_w + sidebar_width//2 + 30, 60)))
 
-        # Position buttons within the sidebar
-        base_x = WIDTH - btn_width - margin_right
-        start_y = HEIGHT // 2 - 150
+        # Buttons & Difficulty
+        base_x = WIDTH - btn_w - margin_right
+        y0     = HEIGHT//2 - 150
 
-        # "New Game" + difficulty
-        draw_background_cover(screen, background, 0, 0, available_width, available_height)
-        draw_safari_title(center_x=available_width // 2, center_y=HEIGHT // 2 - 120)
-
-        sidebar_rect = pygame.Rect(WIDTH - sidebar_width, 0, sidebar_width, HEIGHT)
-        pygame.draw.rect(screen, SIDEBAR_COLOR, sidebar_rect)
-
-        heading_text = font_main.render("Main Menu", True, WHITE)
-        heading_rect = heading_text.get_rect(center=(WIDTH - sidebar_width // 2 + 30, 60))
-        screen.blit(heading_text, heading_rect)
-
-        buttons[0].rect.topleft = (base_x, start_y)
+        buttons[0].rect.topleft = (base_x, y0)
         buttons[0].draw()
-        difficulty_y = buttons[0].rect.bottom + 10
-        difficulty_x = base_x - 60
-        draw_difficulty_selector(difficulty_x, difficulty_y)
+        diff_y = y0 + btn_h + 10
+        diff_x = base_x - 60
+        draw_difficulty_selector(diff_x, diff_y)
 
-        # "Load Game"
-        buttons[1].rect.topleft = (base_x, difficulty_y + 70)
+        # Load & Quit
+        buttons[1].rect.topleft = (base_x, diff_y + 70)
         buttons[1].draw()
-
-        # "Quit"
         buttons[2].rect.topleft = (base_x, buttons[1].rect.bottom + 20)
         buttons[2].draw()
 
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
+        for evt in pygame.event.get():
+            if evt.type == pygame.QUIT:
                 quit_game()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
+            elif evt.type == pygame.KEYDOWN:
+                if evt.key in (pygame.K_ESCAPE,):
                     quit_game()
-                elif event.key == pygame.K_F11:
+                elif evt.key == pygame.K_F11:
                     toggle_fullscreen()
-            elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                handle_difficulty_click(event.pos, difficulty_x, difficulty_y)
+            elif evt.type == pygame.MOUSEBUTTONDOWN and evt.button == 1:
+                handle_difficulty_click(evt.pos, diff_x, diff_y)
                 for btn in buttons:
-                    if btn.is_clicked(event.pos):
+                    if btn.is_clicked(evt.pos):
                         btn.callback()
 
         pygame.display.flip()
