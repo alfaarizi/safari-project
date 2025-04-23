@@ -34,11 +34,6 @@ class Road:
     def length_to(self, other: "Road") -> float:
         return self.pos.distance_to(other.pos)
 
-    # ------------------------------------------------------------- debugging
-    def __repr__(self) -> str:
-        x, y = int(self.pos.x), int(self.pos.y)
-        return f"<Road ({x},{y}) {self.road_type.name}>"
-
 
     def build(self, capital: "Capital") -> bool:
         if capital.deductFunds(self.cost_to_build):

@@ -52,15 +52,18 @@ class BoardGUI:
         self.poacher = self._load_img(root, "poacher")
 
     # ------------------------------------------------ public helpers
-    def update_day_night(self, dt: float):
-        if not self._dn_enabled:
-            return
+
+    def update_day_night(self, dt):
         self._dn_timer = (self._dn_timer + dt) % self._dn_period
         t = self._dn_timer
-        if   t < 270:  self.dn_opacity = 0.0
-        elif t < 300:  self.dn_opacity = (t - 270) / 30
-        elif t < 450:  self.dn_opacity = 1.0
-        else:          self.dn_opacity = 1.0 - ((t - 450) / 30)
+        if t < 270:
+            self.dn_opacity = 0.0
+        elif t < 300:
+            self.dn_opacity = (t - 270) / 30
+        elif t < 450:
+            self.dn_opacity = 1.0
+        else:
+            self.dn_opacity = 1.0 - ((t - 450) / 30)
 
     # ------------------------------------------------ main render
     def render(self, screen: Surface, rect: Rect):

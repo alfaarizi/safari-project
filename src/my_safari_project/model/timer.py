@@ -1,15 +1,5 @@
 import pygame
-# from my_safari_project.model.timespeed import TimeSpeed
-#from timespeed import TimeSpeed
 
-# from enum import Enum
-
-# class TimeSpeed(Enum):
-#     SLOW = 1
-#     NORMAL = 2
-#     FAST = 3
-
-# Game time Units to how much real time in Seconds
 TIME_SCALE = {            # Game time Bounds
     "minute": 0.7,        # 1 minute
     "hour": 42.0,         # 60 minutes

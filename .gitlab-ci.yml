@@ -1,20 +1,23 @@
 stages:
-  - test
   - lint
-
-test_job:
-  stage: test
-  image: python:3.10
-  script:
-    - pip install poetry
-    - poetry install
-    - poetry run pytest --cov=src --cov-report=term
-    - poetry install --with dev
-    - poetry run ruff check .
+  - test
 
 lint_job:
   stage: lint
   image: python:3.10
+  before_script:
+    - pip install poetry
+    - poetry install
   script:
-    - pip install ruff
-    - ruff check .
+    - poetry run ruff check .
+    - poetry run ruff format --check .
+
+test_job:
+  stage: test
+  image: python:3.10
+  before_script:
+    - pip install poetry
+    - poetry install
+  script:
+    - poetry run pytest --cov=src --cov-report=term
+  coverage: '/TOTAL.+ ([0-9]{1,3}%)/'
