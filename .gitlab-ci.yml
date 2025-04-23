@@ -17,4 +17,4 @@ lint_job:
   image: python:3.10
   script:
     - pip install ruff
-    - ruff .
+    - ruff check .
