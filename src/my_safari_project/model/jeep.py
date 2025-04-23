@@ -1,55 +1,43 @@
-from typing import Tuple, TYPE_CHECKING
+from typing import List
+from pygame.math import Vector2
 
-if TYPE_CHECKING:
-    from my_safari_project.model.tourist import Tourist
 
 class Jeep:
-    def __init__(
-        self,
-        jeep_id: int,
-        capacity: int,
-        fuel_level: float,
-        position: Tuple[float, float],
-        rental_price: float
-    ):
+
+    def __init__(self, jeep_id: int, start_position: Vector2):
         self.jeep_id = jeep_id
-        self.capacity = capacity
-        self.current_passengers = 0
-        self.fuel_level = fuel_level
-        self.position = position
-        self.is_available = True
-        self.rental_price = rental_price
+        # position in continuous tile‐units (1.0 = one tile width)
+        self.position: Vector2 = Vector2(start_position)
+        self.speed: float = 2.0  # tiles per second
+        self.path: List[Vector2] = []
+        self._waypoint_index: int = 0
+        self.returning: bool = False
 
-    def move_to(self, dest: Tuple[float, float]) -> None:
-        self.position = dest
-        self.fuel_level -= 1.0
+    def set_path(self, waypoints: List[Vector2]):
 
-    def pick_up(self, tourist: "Tourist") -> bool:
-        if self.is_available and self.current_passengers < self.capacity:
-            self.current_passengers += 1
-            return True
-        return False
+        # convert to true centers
+        self.path = [wp + Vector2(0.5, 0.5) for wp in waypoints]
+        self._waypoint_index = 0
 
-    def drop_off(self, tourist: "Tourist") -> bool:
-        if self.current_passengers > 0:
-            self.current_passengers -= 1
-            return True
-        return False
+    def update(self, dt: float):
 
-    def refuel(self, amount: float) -> None:
-        self.fuel_level += amount
+        if not self.path or self._waypoint_index >= len(self.path):
+            return
 
-    def rent_out(self) -> None:
-        self.is_available = False
+        target = self.path[self._waypoint_index]
+        delta  = target - self.position
+        dist   = delta.length()
+        step   = self.speed * dt
 
-    def return_to_garage(self) -> None:
-        self.is_available = True
-        self.current_passengers = 0
+        if dist <= step:
+            # snap to waypoint
+            self.position = Vector2(target)
+            self._waypoint_index += 1
+        else:
+            self.position += delta.normalize() * step
 
-    def __repr__(self) -> str:
+    def __repr__(self):
         return (
-            f"Jeep(id={self.jeep_id}, capacity={self.capacity}, "
-            f"passengers={self.current_passengers}, fuel={self.fuel_level}, "
-            f"position={self.position}, available={self.is_available}, "
-            f"rentalPrice={self.rental_price})"
+            f"<Jeep #{self.jeep_id} at {self.position!r} "
+            f"waypoint={self._waypoint_index}/{len(self.path)}>"
         )

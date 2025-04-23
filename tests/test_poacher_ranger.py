@@ -1,7 +1,4 @@
-from my_safari_project.model.board import Board
-from my_safari_project.model.capital import Capital
-from my_safari_project.control.wildlife_ai import WildlifeAI
-from pygame.math import Vector2
+
 
 def test_ranger_catches_poacher():
    ''' board = Board(10, 10)

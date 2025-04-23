@@ -1,175 +1,190 @@
-from pygame.math import Vector2
+from __future__ import annotations
+import random
+from typing import List
 from collections import deque
-from typing import List, Optional
 
-from my_safari_project.model.field import Field
-from my_safari_project.model.road import Road
-from my_safari_project.model.pond import Pond
-from my_safari_project.model.plant import Plant
-from my_safari_project.model.animal import Animal
-from my_safari_project.model.jeep import Jeep
-from my_safari_project.model.ranger import Ranger
+from pygame.math import Vector2
+
+from my_safari_project.model.field   import Field
+from my_safari_project.model.road    import Road, RoadType
+from my_safari_project.model.jeep    import Jeep
+from my_safari_project.model.pond    import Pond
+from my_safari_project.model.plant   import Plant
+from my_safari_project.model.animal  import Animal
+from my_safari_project.model.ranger  import Ranger
 from my_safari_project.model.poacher import Poacher
 from my_safari_project.model.tourist import Tourist
 
+
 class Board:
+
+
     def __init__(self, width: int, height: int):
-        self.width: int = width
-        self.height: int = height
-        self.fields: List[List[Field]] = []
-        self.roads: List[Road] = []
-        self.ponds: List[Pond] = []
-        self.plants: List[Plant] = []
-        self.animals: List[Animal] = []
-        self.jeeps: List[Jeep] = []
-        self.rangers: List[Ranger] = []
-        self.poachers: List[Poacher] = []
-        self.tourists: List[Tourist] = []
-        self.obstaclesEnabled = True
-    
-    def initializeBoard(self):
-        """Initialize the board with empty fields"""
-        self.fields = [[None for _ in range(self.width)] for _ in range(self.height)]
-        for y in range(self.height):
-            for x in range(self.width):
-                self.fields[y][x] = Field(Vector2(x, y))
-    
-    def getField(self, x: int, y: int) -> Optional[Field]:
-        """Returns the field at the given coordinates."""
-        if 0 <= x < self.width and 0 <= y < self.height:
-            return self.fields[y][x]
-        return None
-    
-    def addRoad(self, road: Road):
-        """Adds a road to the board."""
-        self.roads.append(road)
-    
-    def addPond(self, pond: Pond):
-        """Adds a pond to the board."""
-        self.ponds.append(pond)
-    
-    def addPlant(self, plant: Plant):
-        """Adds a plant to the board."""
-        self.plants.append(plant)
-    
-    def addAnimal(self, animal: Animal):
-        """Adds an animal to the board."""
-        self.animals.append(animal)
-    
-    def removeAnimal(self, animal: Animal):
-        """Removes an animal from the board."""
-        try:
-            self.animals.remove(animal)
-        except:
-            pass
-    
-    def addJeep(self, jeep: Jeep):
-        """Adds a jeep to the board."""
-        self.jeeps.append(jeep)
-    
-    def addRanger(self, ranger: Ranger):
-        """Adds a ranger to the board."""
-        self.rangers.append(ranger)
-    
-    def addPoacher(self, poacher: Poacher):
-        """Adds a poacher to the board."""
-        self.poachers.append(poacher)
+        self.width  = width
+        self.height = height
 
-    def removePoacher(self, poacher: Poacher):
-        """Removes a poacher from the board."""
-        try:
-            self.poachers.remove(poacher)
-        except:
-            pass
-    
-    def updateAll(self, deltaTime: float):
-        """Sample Implementation"""
-        """Update all entities on the board based on the time delta."""
-        for animal in self.animals:
-            animal.age += deltaTime
-            if animal.is_alive():
-                # animals move, eat, drink, and reproduce here
-                animal.add_hunger()
-                animal.add_thirst()
-                animal.move(Vector2(0, 0))  # update to move towards the target, this is a placeholder.
-                
-                # reproduce if possible
-                for other_animal in self.animals:
-                    if animal is not other_animal and animal.is_alive():
-                        new_animal = animal.reproduce(other_animal)
-                        if new_animal:
-                            self.addAnimal(new_animal)
-        # additional updates for jeeps, rangers, poachers, etc.
-    
-    def drawAll(self):
-        pass
-        # """Renders the board and everything on it."""
-        # for row in self.fields:
-        #     for field in row:
-        #         field.draw()  # placeholder for drawing each field, implementation depends on your graphic engine
+        # entrance (left edge, second row)  / exit (right edge, second-last row)
+        self.entrance = Vector2(0, 1)
+        self.exit     = Vector2(width - 1, height - 2)
 
-        # # render other entities (roads, ponds, plants, animals, jeeps, etc.)
-        # for road in self.roads:
-        #     road.draw()
-        # for pond in self.ponds:
-        #     pond.draw()
-        # for plant in self.plants:
-        #     plant.draw()
-        # for animal in self.animals:
-        #     animal.draw()
-        # for jeep in self.jeeps:
-        #     jeep.draw()
-        # for ranger in self.rangers:
-        #     ranger.draw()
-        # for poacher in self.poachers:
-        #     poacher.draw()
-    
-    def findPath(self, start: Field, end: Field) -> List[Field]:
-        """Finds a path between start and end using a bfs pathfinding algorithm"""
-        open_list = deque([start])
-        came_from = {}
-        
-        while open_list:
-            current = open_list.popleft()
-            
-            if current == end:
-                path = []
-                while current in came_from:
-                    path.append(current)
-                    current = came_from[current]
-                path.reverse()  # returns path from start to end
-                return path
-            
-            for neighbor in self.get_neighbors(current):
-                if neighbor not in came_from:
-                    open_list.append(neighbor)
-                    came_from[neighbor] = current
-        
-        return []  # returns an empty path if no path found
-    
-    def get_neighbors(self, field: Field) -> List[Field]:
-        """Returns the neighboring fields of a given field."""
-        neighbors = []
-        x, y = field.position.x, field.position.y
-        
-        # checks the neighboring fields (up, down, left, right)
-        if x > 0:
-            neighbors.append(self.fields[y][x - 1])
-        if x < self.width - 1:
-            neighbors.append(self.fields[y][x + 1])
-        if y > 0:
-            neighbors.append(self.fields[y - 1][x])
-        if y < self.height - 1:
-            neighbors.append(self.fields[y + 1][x])
-        
-        return neighbors
+        # fields grid
+        self.fields: List[List[Field]] = [
+            [Field(Vector2(x, y)) for x in range(width)]
+            for y in range(height)
+        ]
 
-    # ------------ RANGER / POACHER helpers ------------
-    def spawn_poacher(self, pos: Vector2, name="Poacher"):
-        new_id = len(self.poachers) + 1
-        self.poachers.append(Poacher(new_id, name, pos))
+        # entity lists
+        self.roads    : List[Road]    = []
+        self.jeeps    : List[Jeep]    = []
+        self.ponds    : List[Pond]    = []
+        self.plants   : List[Plant]   = []
+        self.animals  : List[Animal]  = []
+        self.rangers  : List[Ranger]  = []
+        self.poachers : List[Poacher] = []
+        self.tourists : List[Tourist] = []
 
-    def spawn_ranger(self, pos: Vector2, name="Ranger", salary=150):
-        new_id = len(self.rangers) + 1
-        self.rangers.append(Ranger(pos))
+        # build initial road and spawn first jeep
+        self._build_initial_road()
+        self.add_jeep()
 
+    # ---------------------------------------------------------------- road
+    def _build_initial_road(self):
+        # key points: entrance → random bends → exit
+        pts: List[Vector2] = [self.entrance]
+        for _ in range(random.randint(2, 3)):
+            pts.append(Vector2(
+                random.randint(2, self.width - 3),
+                random.randint(2, self.height - 3),
+            ))
+        pts.append(self.exit)
+
+        for a, b in zip(pts, pts[1:]):
+            self._lay_road_segment(a, b)
+
+    def _lay_road_segment(self, a: Vector2, b: Vector2):
+        x, y = int(a.x), int(a.y)
+        dx = 1 if b.x > a.x else -1
+        dy = 1 if b.y > a.y else -1
+
+        # horizontal
+        while x != int(b.x):
+            self._add_road_tile(Vector2(x, y), Vector2(x+dx, y))
+            x += dx
+
+        # vertical
+        while y != int(b.y):
+            self._add_road_tile(Vector2(x, y), Vector2(x, y+dy))
+            y += dy
+
+
+
+    def _add_road_tile(self, cur: Vector2, nxt: Vector2):
+        """Ensure both tiles exist, link them, and set correct curve/straight."""
+        def get_or_create(pos: Vector2) -> Road:
+            for r in self.roads:
+                if r.pos == pos:
+                    return r
+            # default type; will adjust for curves below
+            rt = RoadType.STRAIGHT_H if pos.y == nxt.y else RoadType.STRAIGHT_V
+            road = Road(pos, rt)
+            self.roads.append(road)
+            return road
+
+        t1 = get_or_create(cur)
+        t2 = get_or_create(nxt)
+
+        # link neighbors
+        t1.add_neighbor(t2.pos)
+        t2.add_neighbor(t1.pos)
+
+        # if both x and y changed, assign curve on t1
+        if cur.x != nxt.x and cur.y != nxt.y:
+            if nxt.x > cur.x and nxt.y > cur.y:
+                t1.road_type = RoadType.CURVE_SE
+            elif nxt.x > cur.x and nxt.y < cur.y:
+                t1.road_type = RoadType.CURVE_NE
+            elif nxt.x < cur.x and nxt.y > cur.y:
+                t1.road_type = RoadType.CURVE_SW
+            else:
+                t1.road_type = RoadType.CURVE_NW
+
+    # ----------------------------------------------------- path & jeep spawning
+    def _build_path(self, start: Vector2, goal: Vector2) -> List[Vector2]:
+        """BFS on road tiles to get a list of grid-centre waypoints."""
+        start = Vector2(int(start.x), int(start.y))
+        goal  = Vector2(int(goal.x),  int(goal.y))
+
+        queue = deque([start])
+        came  = {tuple(start): None}
+        road_map = {tuple(r.pos): r for r in self.roads}
+
+        while queue:
+            pos = queue.popleft()
+            if pos == goal:
+                break
+            for n in road_map[tuple(pos)].neighbors:
+                key = tuple(n)
+                if key not in came:
+                    came[key] = pos
+                    queue.append(n)
+
+        # reconstruct
+        path: List[Vector2] = []
+        cur = goal
+        while cur is not None:
+            path.append(cur)
+            cur = came.get(tuple(cur))
+        path.reverse()
+        return path
+
+    def add_jeep(self):
+        """Spawn a jeep at entrance, give it a path to exit."""
+        j = Jeep(len(self.jeeps) + 1, self.entrance + Vector2(0.5, 0.5))
+        j.set_path(self._build_path(self.entrance, self.exit))
+        self.jeeps.append(j)
+
+    # --------------------------------------------------------------- update
+    def update(self, dt: float):
+        """
+        Called each frame; moves jeeps, expands board if they near an edge,
+        and flips direction when they reach entrance/exit.
+        """
+        for jeep in self.jeeps:
+            jeep.update(dt)
+
+            ix, iy = int(jeep.position.x), int(jeep.position.y)
+            if ix >= self.width - 2:
+                self._expand_right()
+            if iy >= self.height - 2:
+                self._expand_down()
+
+            # check if reached target
+            target = self.exit if not jeep.returning else self.entrance
+            centre = target + Vector2(0.5, 0.5)
+            if (jeep.position - centre).length() < 0.1:
+                jeep.returning = not jeep.returning
+                # rebuild path in opposite direction
+                new_start = self.exit if jeep.returning else self.entrance
+                new_goal  = self.entrance if jeep.returning else self.exit
+                jeep.set_path(self._build_path(new_start, new_goal))
+
+    # --------------------------------------------------------- board growth
+    def _expand_right(self):
+        """Add one column on the right."""
+        for y, row in enumerate(self.fields):
+            row.append(Field(Vector2(len(row), y)))
+        self.width += 1
+        self.exit.x = self.width - 1
+
+    def _expand_down(self):
+        """Add one row at the bottom."""
+        y = self.height
+        self.fields.append([Field(Vector2(x, y)) for x in range(self.width)])
+        self.height += 1
+
+    # ---------------------------------------------------------- debugging
+    def __repr__(self) -> str:
+        return (
+            f"<Board {self.width}×{self.height} "
+            f"roads={len(self.roads)} jeeps={len(self.jeeps)}>"
+        )
