@@ -1,7 +1,6 @@
-# my_safari_project/model/board.py
 from __future__ import annotations
 import random
-from typing import List, Optional
+from typing import List
 from collections import deque
 
 from pygame.math import Vector2

@@ -1,10 +1,9 @@
 from __future__ import annotations
 import os
-from typing import Tuple, List
+from typing import Tuple
 
 import pygame
 from pygame import Surface, Rect
-from pygame.math import Vector2
 
 from my_safari_project.model.board import Board
 from my_safari_project.model.road  import Road

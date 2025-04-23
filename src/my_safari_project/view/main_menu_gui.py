@@ -3,10 +3,8 @@ import sys
 import tkinter as tk
 from tkinter import filedialog
 
-from pygame import surface, image
 
 from my_safari_project.control.game_controller import DifficultyLevel
-from my_safari_project.view.gamegui import GameGUI
 
 pygame.init()
 pygame.mixer.init()

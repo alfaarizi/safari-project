@@ -2,8 +2,8 @@ from pygame.math import Vector2
 from typing import TYPE_CHECKING
 from my_safari_project.model.animal import Animal
 
-if TYPE_CHECKING:
-    from my_safari_project.model.plant import Plant
+'''if TYPE_CHECKING:
+    from my_safari_project.model.plant import Plant'''
 
 class Herbivore(Animal["Plant"]):
     """Animal that consumes Plant"""

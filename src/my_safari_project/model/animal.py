@@ -3,8 +3,6 @@ from abc import ABC
 from typing import List, TypeVar, Generic, Union, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from my_safari_project.model.plant import Plant
-    from my_safari_project.model.herbivore import Herbivore
     from my_safari_project.model.pond import Pond
     from my_safari_project.model.board import Board
     from my_safari_project.model.field import Field

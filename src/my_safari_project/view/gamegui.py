@@ -1,7 +1,6 @@
 from __future__ import annotations
 import random
 import sys
-from typing import Dict, List
 
 import pygame
 from pygame.math import Vector2
