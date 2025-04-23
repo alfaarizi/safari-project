@@ -72,7 +72,7 @@ class GameController:
         self.lost               = False
 
         self.start_game()
-
+    
     def start_game(self):
         self.game_state = GameState.RUNNING
 
@@ -117,6 +117,19 @@ class GameController:
 
     def check_lose_condition(self) -> bool:
         return self.lost
+
+    
+    def applyDifficulty(self):
+        """Map your difficulty to day/night lengths (seconds)."""
+        if self.difficulty_level == DifficultyLevel.LEVELS[0]:  # Easy
+            self.timer.dayLength   = 8 * 60
+            self.timer.nightLength = 4 * 60
+        elif self.difficulty_level == DifficultyLevel.LEVELS[1]:  # Medium
+            self.timer.dayLength   = 6 * 60
+            self.timer.nightLength = 3 * 60
+        else:  # Hard
+            self.timer.dayLength   = 4 * 60
+            self.timer.nightLength = 2 * 60
 
     def set_difficulty(self, level: DifficultyLevel):
         self.difficulty = level

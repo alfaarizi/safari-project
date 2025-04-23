@@ -18,11 +18,13 @@ from my_safari_project.view.boardgui import BoardGUI
 SCREEN_W, SCREEN_H = 1080, 720
 SIDE_PANEL_W = 320
 TOP_BAR_H = 60
+BOTTOM_BAR_H = 80
 
 BOARD_RECT = pygame.Rect(
-    0, TOP_BAR_H,
+    0,
+    TOP_BAR_H,
     SCREEN_W - SIDE_PANEL_W,
-    SCREEN_H - TOP_BAR_H
+    SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H
 )
 
 POACHER_INTERVAL = 20.0        # seconds between automatic spawns
@@ -86,8 +88,8 @@ class GameGUI:
         self.item_rects: List[pygame.Rect] = []
         self.hover_item = -1
 
-        # internal clock
-        self.clock = pygame.time.Clock()
+        # timers
+        self.timer = Timer()
         self._poacher_timer = 0.0
 
         # seed one ranger
@@ -96,7 +98,7 @@ class GameGUI:
     # ------------------------------------------------------------------ main
     def run(self):
         while self.running:
-            raw_dt = self.clock.tick(60) / 1000.0
+            raw_dt = self.timer.tick()
             dt = min(raw_dt, 0.02)
 
             # accumulate real seconds
@@ -229,6 +231,7 @@ class GameGUI:
 
         # UI panels
         self._draw_top_bar()
+        self._draw_bottom_bar()
         self._draw_side_panel()
         self._draw_feedback()
 
@@ -236,23 +239,83 @@ class GameGUI:
 
     # ---------- UI draw helpers --------------------------------------
     def _draw_top_bar(self):
-        pygame.draw.rect(self.screen, (60, 70, 90), (0, 0, SCREEN_W, TOP_BAR_H))
+        margin, box_h, radius = 10, 30, 8
+        default_options = {
+            "from_right": False,
+            "background_color": (60, 60, 232)
+        }
+        def draw_box(text_str, x_pos, options=None):
+            options = {**default_options, **(options or {})}
 
-        # Difficulty label
-        diff_surf = self.font_small.render(f"Difficulty: {self.difficulty.value}", True, (255, 255, 255))
-        self.screen.blit(diff_surf, (20, (TOP_BAR_H - diff_surf.get_height()) // 2))
+            text = self.font_medium.render(text_str, True, (255, 255, 255))
+            box_w = text.get_size()[0] + 20
+            rect_x = (SCREEN_W - x_pos - box_w) if options["from_right"] else x_pos
+            rect = pygame.Rect(rect_x, (TOP_BAR_H - box_h) // 2, box_w, box_h)
+            # draw fill and border
+            pygame.draw.rect(self.screen, options["background_color"], rect, border_radius=radius)
+            pygame.draw.rect(self.screen, (255, 255, 255), rect, 2, border_radius=radius)
+            # draw text
+            self.screen.blit(text, (rect_x + 10, rect.y + (box_h - text.get_height()) // 2))
+            return box_w
+        
+        # draw the labels
+        pygame.draw.rect(self.screen,(60,70,90),(0,0,SCREEN_W,TOP_BAR_H))
 
-        # Compute in‑game days and months from real seconds
-        total_days = int(self.elapsed_real_seconds / GAME_SECONDS_PER_DAY)
-        months = total_days // 30
-        days   = total_days % 30
-        time_surf = self.font_small.render(f"Elapsed: {months}m {days}d", True, (255, 255, 255))
-        tx = (SCREEN_W - SIDE_PANEL_W) // 2 - time_surf.get_width() // 2
-        self.screen.blit(time_surf, (tx, (TOP_BAR_H - time_surf.get_height()) // 2))
+        x_pos = margin
+        for label in [
+            f"Tourists: {len(self.board.tourists)}",
+            f"Animals: {len(self.board.animals)}",
+        ]:
+            width = draw_box(label, x_pos)
+            x_pos += width + margin
 
-        # Capital
-        cap_surf = self.font_small.render(f"Capital: ${self.capital.getBalance():.0f}", True, (255, 255, 255))
-        self.screen.blit(cap_surf, (SCREEN_W - cap_surf.get_width() - 20, (TOP_BAR_H - cap_surf.get_height()) // 2))
+        draw_box(f"Capital: ${self.capital.getBalance():.0f}", margin, {
+            "from_right": True,
+            "background_color": (0, 100, 0)
+        })
+
+    def _draw_bottom_bar(self):
+        margin, oval_h = 20, 50
+        def draw_oval(text_str, x_pos):
+            text = self.font_medium.render(text_str, True, (255, 255, 255))
+            oval_w = text.get_width() + 40
+            rect = pygame.Rect(x_pos, (
+                SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - oval_h) // 2
+            ), oval_w, oval_h)
+            # draw box
+            pygame.draw.ellipse(self.screen, (40, 45, 60), rect)
+            pygame.draw.ellipse(self.screen, (255, 255, 255), rect, 2)
+            # draw fill
+            self.screen.blit(text,(
+                rect.x + (rect.width - text.get_width()) // 2,
+                rect.y + (rect.height - text.get_height()) // 2
+            ))
+            return oval_w
+
+        pygame.draw.rect(self.screen, (60, 70, 90), 
+                        (0, SCREEN_H - BOTTOM_BAR_H, SCREEN_W - SIDE_PANEL_W, BOTTOM_BAR_H))
+
+        # get time data
+        date, time_str = self.timer.get_date_time()
+        game_time = self.timer.get_game_time()
+        
+        x_pos = margin
+        for time_unit, time in list(game_time.items())[:4]:
+            width = draw_oval(f"{time_unit}: {time}", x_pos)
+            x_pos += width + margin
+
+        # draw date/time boxes
+        box_y = (SCREEN_H - BOTTOM_BAR_H) + (BOTTOM_BAR_H - 30 * 2 - 4) // 2
+        box_x = SCREEN_W - SIDE_PANEL_W - 120 - 20
+        for i, (text, y_offset) in enumerate([(date, 0), (time_str, 34)]):
+            rect = pygame.Rect(box_x, box_y + y_offset, 120, 30)
+            pygame.draw.rect(self.screen, (153,101,21), rect, border_radius=4)
+            pygame.draw.rect(self.screen, (255, 255, 255), rect, 2, border_radius=4)
+            text_surf = self.font_medium.render(text, True, (255, 255, 255))
+            self.screen.blit(text_surf, (
+                rect.x + (rect.width - text_surf.get_width()) // 2,
+                rect.y + (rect.height - text_surf.get_height()) // 2
+            ))
 
     def _draw_side_panel(self):
         px, py = SCREEN_W - SIDE_PANEL_W, TOP_BAR_H
@@ -272,13 +335,12 @@ class GameGUI:
             y += 44
 
     def _draw_feedback(self):
-        if self.feedback_alpha <= 0:
-            return
-        surf = self.font_medium.render(self.feedback, True, (255, 255, 255))
+        if self.feedback_alpha<=0: return
+        surf = self.font_medium.render(self.feedback,True,(128,0,0))
         surf.set_alpha(self.feedback_alpha)
-        x = (SCREEN_W - surf.get_width()) // 2
-        y = SCREEN_H - surf.get_height() - 20
-        self.screen.blit(surf, (x, y))
+        x = (SCREEN_W-surf.get_width())//2
+        y = SCREEN_H - BOTTOM_BAR_H - surf.get_height() - 20
+        self.screen.blit(surf,(x,y))
 
     def _show_feedback(self, msg: str):
         self.feedback       = msg

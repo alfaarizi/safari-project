@@ -8,7 +8,8 @@ if TYPE_CHECKING:
 class Carnivore(Animal["Herbivore"]):
     """Animal that consumes Herbivore"""
     def __init__(
-        self, 
+        self,
+        animal_id: int,
         group_id: int, 
         position: Vector2, 
         speed: float,
@@ -16,4 +17,4 @@ class Carnivore(Animal["Herbivore"]):
         age: int, 
         lifespan: int
     ):
-        super().__init__(group_id, position, speed, value, age, lifespan)
+        super().__init__(animal_id, group_id, position, speed, value, age, lifespan)

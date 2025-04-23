@@ -1,8 +1,9 @@
 import os
+from typing import Dict, Any, Tuple, List
+
 import pygame
 from pygame import Surface
 from pygame.math import Vector2
-from typing import Dict, Any, Tuple, List
 
 from my_safari_project.model.board import Board
 

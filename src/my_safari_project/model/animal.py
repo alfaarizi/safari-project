@@ -15,6 +15,7 @@ class Animal(ABC, Generic[T]):
     """Generic class for Animal that consumes T"""
     def __init__(
         self, 
+        animal_id: int,
         group_id: int, 
         position: Vector2, 
         speed: float,
@@ -22,6 +23,7 @@ class Animal(ABC, Generic[T]):
         age: int, 
         lifespan: int
     ):
+        self.animal_id: int = animal_id
         self.group_id: int = group_id
         self.position: Vector2 = position
         self.speed: float = speed
