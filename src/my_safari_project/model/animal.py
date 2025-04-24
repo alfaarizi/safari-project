@@ -1,3 +1,5 @@
+import random
+
 from pygame.math import Vector2
 from abc import ABC
 from typing import List, TypeVar, Generic, Union, Optional, TYPE_CHECKING
@@ -44,15 +46,32 @@ class Animal(ABC, Generic[T]):
         self.alive: bool = True
         self.hunger: int = 0 # {0..10}
         self.thirst: int = 0 # {0..10}
+        self._wander_target: Vector2 | None = None
 
-    def move(self, target: Vector2):
+    def move(self, target: Vector2,dt: float):
         direction = target - self.position
         dist = direction.length()
         if dist == 0:
             return
         # normalize and step
-        step = min(dist, self.speed)
+        step = min(dist, self.speed * dt)
         self.position += direction.normalize() * step
+
+    def update(self, dt: float, board_w: int, board_h: int) -> None:
+        """
+        Very-simple AI: wander to a random tile at self.speed.
+        Called once per frame from Board / GameGUI.
+        """
+        #  choose a destination if we don’t have one or we reached it
+        if (self._wander_target is None or
+                self.position.distance_to(self._wander_target) < 0.2):
+            self._wander_target = Vector2(
+                random.uniform(0, board_w - 1),
+                random.uniform(0, board_h - 1)
+            )
+
+        # walk toward that tile centre
+        self.move(self._wander_target, dt)
 
     def get_surroundings(self, board: "Board") -> List["Field"]:
         """Returns the nearby fields on the board."""
