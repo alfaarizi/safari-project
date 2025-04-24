@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from my_safari_project.model.ranger import Ranger
     from my_safari_project.model.animal import Animal
+    from my_safari_project.model.animal import Board
 
 class Poacher:
     """

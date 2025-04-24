@@ -13,6 +13,7 @@ from my_safari_project.control.game_controller import DifficultyLevel
 from my_safari_project.model.timer import Timer
 
 from my_safari_project.view.boardgui import BoardGUI
+from my_safari_project.control.wildlife_ai import WildlifeAI
 
 # window & layout constants
 SCREEN_W, SCREEN_H = 1080, 720
@@ -61,6 +62,7 @@ class GameGUI:
         # MODEL
         self.board   = Board(45, 40)
         self.capital = Capital(init_balance)
+        self.wildlife_ai = WildlifeAI(self.board, self.capital)
 
         # our global timer
         self.timer = Timer()
@@ -69,6 +71,8 @@ class GameGUI:
 
         # VIEW
         self.board_gui = BoardGUI(self.board)
+
+        # CONTROL
 
         # UI fonts
         self.font_small  = pygame.font.SysFont("Verdana", 16)
@@ -110,6 +114,7 @@ class GameGUI:
             # accumulate real seconds if you need them
             self.elapsed_real_seconds += dt
 
+            self.wildlife_ai.update(dt)
             self._handle_events()
             self._update_sim(dt)
             self._draw()

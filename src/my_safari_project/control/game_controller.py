@@ -93,7 +93,6 @@ class GameController:
         if self.game_state != GameState.RUNNING:
             return
 
-        
         self.timer.updateTime(delta_time)
         self.board.updateAll(delta_time)
         self.wildlife_ai.update(delta_time)

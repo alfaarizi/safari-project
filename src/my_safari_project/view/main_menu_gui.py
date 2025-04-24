@@ -25,8 +25,6 @@ HIGHLIGHT = (128, 200, 60)
 SIDEBAR_COLOR = (50, 50, 50)
 
 # Screen setup
-from my_safari_project.view.boardgui import BoardGUI
-from my_safari_project.control.game_controller import GameController
 from my_safari_project.view.gamegui import GameGUI
 
 # Initialize Pygame modules

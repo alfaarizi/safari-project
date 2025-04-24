@@ -1,11 +1,12 @@
 from __future__ import annotations
 from pygame.math import Vector2
-from random import randint, random
 from typing import Any, Dict, TYPE_CHECKING
+import random
 
 from my_safari_project.model.animal import Animal
 from my_safari_project.model.herbivore import Herbivore
 from my_safari_project.model.carnivore import Carnivore
+from my_safari_project.model.poacher import Poacher
 
 if TYPE_CHECKING:
     from my_safari_project.model.board import Board
@@ -37,15 +38,14 @@ class WildlifeAI:
 
         # ---- Update Poachers ----
         for p in self.board.poachers:
-            p.update(dt, (self.board.width, self.board.height))
+            p.update(dt, self.board)
 
         # ---- Update Rangers ----
         for r in self.board.rangers:
-            r.update(dt)
+            r.update(dt, self.board)
             self._ranger_vision(r)
 
         # ---- Update animals ----
-        print("hi")
         for animal in self.board.animals[:]:
             if not animal.alive: continue
 
@@ -90,7 +90,12 @@ class WildlifeAI:
     #                helpers
     # -------------------------------------------------
     def _spawn_poacher(self):
-        self.board.spawn_poacher(Vector2(randint(0, self.board.width - 1), 0))
+        # self.board.spawn_poacher(Vector2(randint(0, self.board.width - 1), 0))
+        pid = len(self.board.poachers) + 1
+        self.board.poachers.append(Poacher(pid, 
+                                           "Poacher" + str(pid), 
+                                           Vector2(random.randint(0, self.board.width - 1), 0)
+                                           ))
 
     def _ranger_vision(self, ranger):
         """If a poacher within vision → chase / catch."""
@@ -128,36 +133,36 @@ class WildlifeAI:
     def _process_animal_behaviour(self, animal: "Animal", dt: float):
         # Priority 1: Drink if very thirsty
         if animal.thirst >= THIRST_THRESHOLD:
-            if self._seek_water(animal): return
+            if self._seek_water(animal, dt): return
         # Priority 2: Eat if very hungry
         if animal.hunger >= HUNGER_THRESHOLD:
-            if self._seek_food(animal): return
+            if self._seek_food(animal, dt): return
         # Priority 3: Try to reproduce if well-fed and not thisrty
         if animal.hunger < 3 and animal.thirst < 3 and animal.is_adult():
-            if self._try_reproduce(animal): return
+            if self._try_reproduce(animal, dt): return
         # Priorty 4: Stay with the group
-        if self._stay_with_group(animal): return
+        if self._stay_with_group(animal, dt): return
         # Priority 5: Random wander or rest
         if animal.hunger < 5 and animal.thirst < 5:
-            if random() < 0.2:  # 20% chance to rest when comfortable
+            if random.random() < 0.2:  # 20% chance to rest when comfortable
                 self._animals_rest_time[animal.animal_id] = random.randint(1, 3)
             else:
-                self._wander(animal)
+                self._wander(animal, dt)
         else:
-            self._wander(animal)
+            self._wander(animal, dt)
         
     # --------------- ANIMAL BEHAVOURS ----------------------------------
-    def _seek_water(self, animal: "Animal") -> bool:
+    def _seek_water(self, animal: "Animal", dt: float) -> bool:
         # check memory for known water sources
         memory = self._animals_memory[animal.animal_id]
         if not memory["known_water"] or random.random() < 0.1: # no known water or time to discover
             nearby_ponds = [(p, Vector2(p.location)) for p in self.board.ponds
-                            if animal.position.distance_to(Vector2(p.location) < 15)]
+                            if animal.position.distance_to(Vector2(p.location)) < 15]
             if nearby_ponds:
                 closest_pond, closest_pond_pos = min(nearby_ponds, 
                                                      key=lambda p: animal.position.distance_to(p[1]))
                 # move towards pond
-                animal.move(closest_pond_pos)
+                animal.move(closest_pond_pos, dt)
                 # add to memory if not already known
                 if closest_pond_pos not in memory["known_water"]:
                     memory["known_water"].append(closest_pond_pos)
@@ -175,7 +180,7 @@ class WildlifeAI:
                     closest_pond = p
                     break
             if closest_pond:
-                animal.move(closest_pond_pos)
+                animal.move(closest_pond_pos, dt)
                 # Drink if close enough
                 if not closest_pond.isEmpty() and animal.position.distance_to(closest_pond_pos) < 2:
                     animal.thirst = max(0, animal.thirst - 3)
@@ -186,14 +191,14 @@ class WildlifeAI:
         return False
             
 
-    def _seek_food(self, animal: "Animal") -> bool:
+    def _seek_food(self, animal: "Animal", dt: float) -> bool:
         if isinstance(animal, Herbivore):
-            return self._seek_plants(animal)
+            return self._seek_plants(animal, dt)
         elif isinstance(animal, Carnivore):
-            return self._seek_prey(animal)
+            return self._seek_prey(animal, dt)
         return False
     
-    def _seek_plants(self, herbivore: "Herbivore") -> bool:
+    def _seek_plants(self, herbivore: "Herbivore", dt: float) -> bool:
         memory = self._animals_memory[herbivore.animal_id]
         if not memory["known_food"] or random.random() < 0.1:
             nearby_plants = [(p, Vector2(p.location)) for p in self.board.plants 
@@ -202,7 +207,7 @@ class WildlifeAI:
                 closest_plant, closest_plant_pos = min(nearby_plants, 
                                                        key=lambda p: herbivore.position.distance_to(p[1]))
                 # move toward plant
-                herbivore.move(closest_plant_pos)
+                herbivore.move(closest_plant_pos, dt)
                 # add to memory
                 if closest_plant_pos not in memory["known_food"]:
                     memory["known_food"].append(closest_plant_pos)
@@ -220,7 +225,7 @@ class WildlifeAI:
                     closest_plant = p
                     break
             if closest_plant:
-                herbivore.move(closest_plant_pos)
+                herbivore.move(closest_plant_pos, dt)
                 # Eat if close enough
                 if closest_plant.isAlive and herbivore.position.distance_to(closest_plant_pos) < 2:
                     herbivore.hunger = max(0, herbivore.hunger - 3)
@@ -230,7 +235,7 @@ class WildlifeAI:
                     memory["known_food"].remove(closest_plant_pos)                
         return False
     
-    def _seek_prey(self, carnivore: "Carnivore") -> bool:
+    def _seek_prey(self, carnivore: "Carnivore", dt: float) -> bool:
         memory = self._animals_memory[carnivore.animal_id]
         if not memory["known_food"] or random.random() < 0.1:
             nearby_herbivores = [(a, a.position) for a in self.board.animals 
@@ -239,7 +244,7 @@ class WildlifeAI:
                 closest_herbivore, closest_herbivore_pos = min(nearby_herbivores, 
                                                                key=lambda p: carnivore.distance_to(p[1]))
                 # move toward plant
-                closest_herbivore.move(closest_herbivore_pos)
+                closest_herbivore.move(closest_herbivore_pos, dt)
                 # add to memory
                 if closest_herbivore_pos not in memory["known_food"]:
                     memory["known_food"].append(closest_herbivore_pos)
@@ -257,7 +262,7 @@ class WildlifeAI:
                     closest_herbivore = a
                     break
             if closest_herbivore:
-                carnivore.move(closest_herbivore)
+                carnivore.move(closest_herbivore, dt)
                 # eat if close enough
                 if closest_herbivore.is_alive() and carnivore.position.distance_to(closest_herbivore_pos) < 2:
                     carnivore.hunger = max(0, carnivore.hunger - 5)
@@ -267,7 +272,7 @@ class WildlifeAI:
                     memory["known_food"].remove(closest_herbivore)                
         return False
         
-    def _try_reproduce(self, animal: "Animal") -> bool:
+    def _try_reproduce(self, animal: "Animal", dt: float) -> bool:
         if self._animals_reproduction_time.get(animal.animal_id, 0) > 0: return False
         # find potential mates (same species, adult, relatively healthy)
         potential_mates = [a for a in self.board.animals 
@@ -279,7 +284,7 @@ class WildlifeAI:
         if potential_mates:
             # choose closest healthy mate
             mate = min(potential_mates, key=lambda m: animal.position.distance_to(m.position))
-            animal.move(mate.position)
+            animal.move(mate.position, dt)
             if animal.position.distance_to(mate.position) < 2:
                 new_animal = animal.__class__(
                     animal_id=len(self.board.animals) + 1,
@@ -301,7 +306,7 @@ class WildlifeAI:
                 return True
         return False
 
-    def _stay_with_group(self, animal: "Animal") -> bool:
+    def _stay_with_group(self, animal: "Animal", dt: float) -> bool:
         memory = self._animals_memory[animal.animal_id]
         # find group members (same species within certain range)
         group = [a for a in self.board.animals 
@@ -314,11 +319,11 @@ class WildlifeAI:
             center = sum((a.position for a in group), Vector2()) / len(group)
             # only move toward center if outside comfortable range
             if animal.position.distance_to(center) > 10:
-                animal.move(center)
+                animal.move(center, dt)
                 return True 
         return False
 
-    def _wander(self, animal: "Animal") -> bool:
+    def _wander(self, animal: "Animal", dt: float) -> bool:
         memory = self._animals_memory[animal.animal_id]
         # if no target or close to target, pick a new one
         if (memory["wander_target"] is None or animal.position.distance_to(memory["wander_target"]) < 2):
@@ -328,5 +333,5 @@ class WildlifeAI:
                 random.uniform(0, self.board.height - 1)
             )
         # Move toward target
-        animal.move(memory["wander_target"])
+        animal.move(memory["wander_target"], dt)
         return True
