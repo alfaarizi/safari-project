@@ -90,7 +90,7 @@ class Ranger:
             if self.position.distance_to(p.position) < 0.5:
                 p.captured = True
                 board.poachers.remove(p)
-                board.capital.addFunds(50)
+                # board.capital.addFunds(50)    # board has no capital
                 self.poachers_caught += 1
                 break
 

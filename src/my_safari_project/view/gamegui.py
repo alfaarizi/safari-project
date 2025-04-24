@@ -246,11 +246,13 @@ class GameGUI:
                 self._poacher_timer = 0.0
                 self._spawn_poacher()
 
-        # move poachers & rangers
+        # move poachers & rangers & animals
         for p in list(self.board.poachers):
             p.update(dt, self.board)
         for r in self.board.rangers:
             r.update(dt, self.board)
+        for a in self.board.animals:
+            a.update(dt, self.board)
 
         # feedback fade-out
         if self.feedback_timer > 0:

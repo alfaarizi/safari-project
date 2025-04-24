@@ -2,6 +2,7 @@ from pygame.math import Vector2
 from abc import ABC
 from typing import List, TypeVar, Generic, Union, Optional, TYPE_CHECKING
 from enum import Enum
+import random
 
 if TYPE_CHECKING:
     from my_safari_project.model.plant import Plant
@@ -44,15 +45,25 @@ class Animal(ABC, Generic[T]):
         self.alive: bool = True
         self.hunger: int = 0 # {0..10}
         self.thirst: int = 0 # {0..10}
+        self._target: Vector2 | None = None
+    
+    def update(self, dt: float, board: "Board") -> None:
+        """
+        updating random movement without the ai logic
+        """
+        # pick a new wander target if none or reached
+        if (self._target is None or self.position.distance_to(self._target) < 0.2):
+            self._target = Vector2(
+                random.uniform(0, board.width),
+                random.uniform(0, board.height)
+            )
+
+        # move toward that target
+        direction = (self._target - self.position).normalize()
+        self.position += direction * self.speed * dt
 
     def move(self, target: Vector2):
-        direction = target - self.position
-        dist = direction.length()
-        if dist == 0:
-            return
-        # normalize and step
-        step = min(dist, self.speed)
-        self.position += direction.normalize() * step
+        self._target = target
 
     def get_surroundings(self, board: "Board") -> List["Field"]:
         """Returns the nearby fields on the board."""
