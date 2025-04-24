@@ -84,6 +84,14 @@ class GameGUI:
             {"name": "Ranger", "cost": 150},
             {"name": "Plant",  "cost":  20},
             {"name": "Pond",   "cost": 200},
+            {"name": "Hyena",   "cost": 60},
+            {"name": "Lion",   "cost": 150},
+            {"name": "Tiger",   "cost": 180},
+            {"name": "Buffalo",   "cost": 100},
+            {"name": "Elephant",   "cost": 300},
+            {"name": "Giraffe",   "cost": 150},
+            {"name": "Hippo",   "cost": 175},
+            {"name": "Zebra",   "cost": 130}
         ]
         self.item_rects = []
         self.hover_item = -1
@@ -137,6 +145,11 @@ class GameGUI:
                 self._spawn_plant()
             elif item["name"] == "Pond":
                 self._spawn_pond()
+            elif item["name"] in [
+                "Hyena", "Lion", "Tiger", 
+                "Buffalo", "Elephant", "Giraffe", "Hippo", "Zebra"
+            ]:
+                self._spawn_animal(item["name"].upper())
             self._show_feedback(f"Purchased {item['name']} for ${item['cost']}")
         else:
             self._show_feedback("Insufficient funds!")
@@ -174,6 +187,34 @@ class GameGUI:
             "Bush", 20, 0.0, 1, True
         ))
 
+    def _spawn_animal(self, species_name):
+        import random
+        from my_safari_project.model.animal import AnimalSpecies
+        from my_safari_project.model.carnivore import Carnivore
+        from my_safari_project.model.herbivore import Herbivore
+        properties = {
+            # species: (class, speed, value, lifespan)
+            AnimalSpecies.HYENA:    (Carnivore, 1.5, 60,  random.randint(5, 8)),
+            AnimalSpecies.LION:     (Carnivore, 1.8, 150, random.randint(10, 15)),
+            AnimalSpecies.TIGER:    (Carnivore, 2.0, 180, random.randint(8, 12)),
+            AnimalSpecies.BUFFALO:  (Herbivore, 1.2, 100, random.randint(7, 10)),
+            AnimalSpecies.ELEPHANT: (Herbivore, 0.8, 300, random.randint(18,25)),
+            AnimalSpecies.GIRAFFE:  (Herbivore, 1.4, 150, random.randint(13, 18)),
+            AnimalSpecies.HIPPO:    (Herbivore, 0.9, 175, random.randint(15, 22)),
+            AnimalSpecies.ZEBRA:    (Herbivore, 1.7, 130, random.randint(6, 9))
+        }
+        species = getattr(AnimalSpecies, species_name.upper())
+        animal_class, speed, value, lifespan = properties[species]
+        self.board.animals.append(animal_class(
+            animal_id=len(self.board.animals) + 1,
+            species=species,
+            position=self._random_tile(),
+            speed=speed,
+            value=value,
+            age=0,
+            lifespan=lifespan
+        ))
+     
     def _spawn_pond(self):
         from my_safari_project.model.pond import Pond
         pid = len(self.board.ponds) + 1
@@ -279,11 +320,11 @@ class GameGUI:
         margin, oval_h = 20, 50
         def draw_oval(txt, x_pos):
             surf = self.font_medium.render(txt, True, (255,255,255))
-            o_w = surf.get_width() + 40
+            oval_w = surf.get_width() + 40
             rect = pygame.Rect(
                 x_pos,
                 (SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - oval_h)//2),
-                o_w, oval_h
+                oval_w, oval_h
             )
             pygame.draw.ellipse(self.screen, (40,45,60), rect)
             pygame.draw.ellipse(self.screen, (255,255,255), rect, 2)
@@ -291,7 +332,7 @@ class GameGUI:
                 rect.x + (rect.width - surf.get_width())//2,
                 rect.y + (rect.height - surf.get_height())//2
             ))
-            return o_w
+            return oval_w
 
         # fill
         pygame.draw.rect(self.screen, (60,70,90),

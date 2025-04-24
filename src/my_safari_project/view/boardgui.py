@@ -54,6 +54,16 @@ class BoardGUI:
         self.jeep    = self._load_img(root, "jeep")
         self.ranger  = self._load_img(root, "ranger")
         self.poacher = self._load_img(root, "poacher")
+        self.animals   = [
+            self._load_img(root,"carnivores/hyena"),
+            self._load_img(root,"carnivores/lion"),
+            self._load_img(root,"carnivores/tiger"),
+            self._load_img(root,"herbivores/buffalo"),
+            self._load_img(root,"herbivores/elephant"),
+            self._load_img(root,"herbivores/giraffe"),
+            self._load_img(root,"herbivores/hippo"),
+            self._load_img(root,"herbivores/zebra")
+        ]
 
     # -------------------- external API ------------------------
     def follow(self, world_pos: Vector2):
@@ -112,7 +122,7 @@ class BoardGUI:
             pygame.draw.rect(screen, road_col, (px, py, side, side))
 
         # ---------- ponds / plants -----------------------------
-        pw, ph = int(side * 1.5), int(side * 1.2)
+        pw, ph = side, side
         for pond in self.board.ponds:
             loc = pond.location
             if not (min_x-1 <= loc.x < max_x+1 and min_y-1 <= loc.y < max_y+1):
@@ -130,6 +140,15 @@ class BoardGUI:
             px = ox + int((loc.x - min_x) * side)
             py = oy + int((loc.y - min_y) * side - (gh - side))
             screen.blit(pygame.transform.scale(self.plant, (gw, gh)),
+                        (px, py))
+            
+        # ---------- animals -----------------------------
+        aw, ah = side, side
+        for animal in self.board.animals:
+            loc = getattr(animal, "position", Vector2(0,0))
+            px = ox + int((loc.x - min_x) * side)
+            py = oy + int((loc.y - min_y) * side)
+            screen.blit(pygame.transform.scale(self.animals[animal.species], (aw, ah)),
                         (px, py))
 
         # ---------- jeeps (2×2) --------------------------------

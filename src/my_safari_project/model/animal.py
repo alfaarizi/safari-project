@@ -1,11 +1,24 @@
 from pygame.math import Vector2
 from abc import ABC
 from typing import List, TypeVar, Generic, Union, Optional, TYPE_CHECKING
+from enum import Enum
 
 if TYPE_CHECKING:
+    from my_safari_project.model.plant import Plant
+    from my_safari_project.model.herbivore import Herbivore
     from my_safari_project.model.pond import Pond
     from my_safari_project.model.board import Board
     from my_safari_project.model.field import Field
+
+class AnimalSpecies[Enum]:
+    HYENA = 0
+    LION = 1
+    TIGER = 2
+    BUFFALO = 3
+    ELEPHANT = 4
+    GIRAFFE = 5
+    HIPPO = 6
+    ZEBRA = 7
 
 T = TypeVar('T', bound=Union["Plant", "Herbivore"])
 
@@ -14,7 +27,7 @@ class Animal(ABC, Generic[T]):
     def __init__(
         self, 
         animal_id: int,
-        group_id: int, 
+        species: AnimalSpecies, 
         position: Vector2, 
         speed: float,
         value: int, 
@@ -22,7 +35,7 @@ class Animal(ABC, Generic[T]):
         lifespan: int
     ):
         self.animal_id: int = animal_id
-        self.group_id: int = group_id
+        self.species: AnimalSpecies = species
         self.position: Vector2 = position
         self.speed: float = speed
         self.value: int = value
@@ -71,7 +84,8 @@ class Animal(ABC, Generic[T]):
         """Reproduce if target is the same species and both are adults"""
         if isinstance(target, self.__class__) and self.is_adult() and target.is_adult():
             return self.__class__(
-                self.group_id, 
+                self.animal_id,
+                self.species, 
                 self.position, 
                 self.speed, 
                 self.value, 
