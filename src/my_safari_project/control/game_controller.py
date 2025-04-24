@@ -56,7 +56,6 @@ class GameController:
         difficulty: DifficultyLevel
     ):
         self.board = Board(board_width, board_height)
-        self.board.initializeBoard()
         self.timer = Timer() 
         self.capital = Capital(init_balance)
         self.wildlife_ai = WildlifeAI(self.board, self.capital)
@@ -207,11 +206,97 @@ class GameController:
     def calculate_visitor_flow(self):
         pass
 
-    def save_game(self, file_path: str):
-        pass
+    def save_game(self, file_path: str) -> bool:
+        try:
+            game_state = {
+                # Game settings
+                "board_width": self.board.width,
+                "board_height": self.board.height,
+                "difficulty_level": self.difficulty_level.value,
+                "game_state": self.game_state,
+                
+                # Game progress
+                "timer_data": {
+                    "elapsed_seconds": self.timer.elapsed_seconds,
+                },
+                
+                "capital_balance": self.capital.getBalance(),
+                "monthly_income": self.capital.monthlyIncome,
+                "monthly_expenses": self.capital.monthlyExpenses,
+                "consecutive_success_months": self.consec_success,
+                "won": self.won,
+                "lost": self.lost,
+                
+                "visits_req": self.visits_req,
+                "herb_req": self.herb_req,
+                "carn_req": self.carn_req,
+                "cap_req": self.cap_req,
+                "months_needed": self.months_needed,
+                
+                "number_of_visitors": self.number_of_visitors,
+                
+                "save_timestamp": datetime.now().isoformat()
+            }
+            
+            # Use pickle to save the board
+            with open(f"{file_path}.pickle", "wb") as pickle_file:
+                pickle.dump({
+                    "board": self.board,
+                    "wildlife_ai": self.wildlife_ai
+                }, pickle_file)
+            
+            # Using JSON for the simpler data
+            with open(f"{file_path}.json", "w") as json_file:
+                json.dump(game_state, json_file, indent=2)
+                
+            return True
+            
+        except Exception as e:
+            print(f"Error saving game: {str(e)}")
+            return False
+       
+    def load_game(self, file_path: str) -> bool:
+        try:
+            if not (os.path.exists(f"{file_path}.json") and os.path.exists(f"{file_path}.pickle")):
+                print("Save files not found.")
+                return False
 
-    def load_game(self, file_path: str):
-        pass
+            with open(f"{file_path}.pickle", "rb") as pickle_file:
+                pickle_data = pickle.load(pickle_file)
+                self.board = pickle_data["board"]
+                self.wildlife_ai = pickle_data["wildlife_ai"]
+                self.wildlife_ai.board = self.board
+
+            with open(f"{file_path}.json", "r") as json_file:
+                game_state = json.load(json_file)
+
+            self.difficulty_level = DifficultyLevel(game_state["difficulty_level"])
+            self.game_state = game_state["game_state"]
+
+            self.timer.elapsed_seconds = game_state["timer_data"]["elapsed_seconds"]
+            self.capital = Capital(game_state["capital_balance"])
+            self.capital.monthlyIncome = game_state["monthly_income"]
+            self.capital.monthlyExpenses = game_state["monthly_expenses"]
+
+
+
+            self.consec_success = game_state["consecutive_success_months"]
+            self.won = game_state["won"]
+            self.lost = game_state["lost"]
+
+            self.visits_req = game_state["visits_req"]
+            self.herb_req = game_state["herb_req"]
+            self.carn_req = game_state["carn_req"]
+            self.cap_req = game_state["cap_req"]
+            self.months_needed = game_state["months_needed"]
+
+            self.number_of_visitors = game_state["number_of_visitors"]
+
+            return True
+
+        except Exception as e:
+            print(f"Error loading game: {str(e)}")
+            return False
 
     def get_board(self) -> Board:
         return self.board
