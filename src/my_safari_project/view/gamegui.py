@@ -227,46 +227,38 @@ class GameGUI:
 
     # ————————————————————————————————————————————————————————————————————— Simulation Update
 
+    # -- Simulation Update  ---------------------------------------
     def _update_sim(self, dt: float):
+        # board entities (jeeps grow / move)
         self.board.update(dt)
 
+        # centre camera on first jeep if any
         if self.board.jeeps:
             self.board_gui.follow(self.board.jeeps[0].position)
+
+        # day/night overlay
         self.board_gui.update_day_night(dt)
 
-        # automatically spawn new poachers up to the limit
+        # auto-spawn poachers
         if len(self.board.poachers) < self._max_poachers:
             self._poacher_timer += dt
             if self._poacher_timer >= self._poacher_ivl:
                 self._poacher_timer = 0.0
                 self._spawn_poacher()
 
-        # move each poacher
-        for p in self.board.poachers:
-            p.update(dt, (self.board.width, self.board.height))
-
-        # simple ranger AI: chase + eliminate
+        # move poachers & rangers
+        for p in list(self.board.poachers):
+            p.update(dt, self.board)
         for r in self.board.rangers:
-            visible = [p for p in self.board.poachers if p.is_visible_to(r)]
-            if visible:
-                target = min(visible, key=lambda p: r.position.distance_to(p.position))
-                r.chase_poacher(target)
-                if r.eliminate_poacher(target):
-                    self.capital.addFunds(50)
-            else:
-                r.patrol(self.board.width, self.board.height)
+            r.update(dt, self.board)
 
-        if self.board.jeeps:
-            self.board_gui.follow(self.board.jeeps[0].position)
-
-        # fade out any feedback message
+        # feedback fade-out
         if self.feedback_timer > 0:
             self.feedback_timer -= dt
             self.feedback_alpha = int(255 * min(1.0, self.feedback_timer * 2))
         else:
             self.feedback_alpha = 0
-            self.feedback       = ""
-
+            self.feedback = ""
 
     # ————————————————————————————————————————————————————————————————————— Rendering
 

@@ -178,18 +178,20 @@ class BoardGUI:
             screen.blit(scaled_jeep, (px, py))
 
         # ---------- rangers / poachers -------------------------
-        for entity, img in (
-            (self.board.rangers,  self.ranger),
-            (self.board.poachers, self.poacher)
-        ):
-            for e in entity:
-                loc = e.position
-                if not (min_x-1 <= loc.x < max_x+1 and min_y-1 <= loc.y < max_y+1):
-                    continue
-                px = ox + int((loc.x - min_x) * side)
-                py = oy + int((loc.y - min_y) * side)
-                screen.blit(pygame.transform.scale(img, (side, side)),
-                            (px, py))
+        # Draw rangers unconditionally
+        for r in self.board.rangers:
+            rx, ry = int(r.position.x), int(r.position.y)
+            if min_x <= rx < max_x and min_y <= ry < max_y:
+                px = ox + (rx - min_x) * side
+                py = oy + (ry - min_y) * side
+                screen.blit(pygame.transform.scale(self.ranger, (side, side)), (px, py))
+
+        # Draw poachers only when visible to any ranger
+        for p in self.board.poachers:
+            if any(p.is_visible_to(r) for r in self.board.rangers):
+                px = ox + int((p.position.x - min_x) * side)
+                py = oy + int((p.position.y - min_y) * side)
+                screen.blit(pygame.transform.scale(self.poacher, (side, side)), (px, py))
 
         # ---------- grid ---------------------------------------
         grid_col = (80, 80, 80)
