@@ -1,11 +1,14 @@
 import random
 from enum import Enum
-from my_safari_project.model.timer import Timer 
+
+from pygame import Vector2
+
+from my_safari_project.model.timer import Timer
 from my_safari_project.model.timespeed import TimeSpeed
 from my_safari_project.model.board import Board
 from my_safari_project.model.capital import Capital
 from my_safari_project.model.poacher import Poacher
-from my_safari_project.model.ranger import Position, Ranger  # Adjusted module path
+from my_safari_project.model.ranger import Ranger  # Adjusted module path
 from my_safari_project.control.wildlife_ai import WildlifeAI
 
 # -----------------------------------------------------------
@@ -154,17 +157,31 @@ class GameController:
             self.board.addPoacher(poacher)
 
     def deploy_rangers(self, num_rangers: int):
+        """
+        Spawn `num_rangers` new Rangers at random tiles on the board.
+        """
         for _ in range(num_rangers):
-            pos = Position(
-                random.randint(0, self.board.width-1),
-                random.randint(0, self.board.height-1)
+            # pick a random tile‐center
+            pos = Vector2(
+                random.randint(0, self.board.width - 1) + 0.5,
+                random.randint(0, self.board.height - 1) + 0.5,
             )
+
+            # give them a consecutive ID and a name
+            rid   = len(self.board.rangers) + 1
+            name  = f"R{rid}"
+            salary = 100.0  # or whatever your default is
+
             ranger = Ranger(
-                id=random.randint(1000, 9999),
-                name=f"Ranger_{random.randint(100, 999)}",
-                salary=1000.0,
-                position=pos
+                id       = rid,
+                name     = name,
+                salary   = salary,
+                position = pos,
+                vision   = 5.0,   # optional override
+                speed    = 2.0,   # optional override
             )
+
+            # add to the board
             self.board.addRanger(ranger)
 
     def handle_poacher_encounters(self):

@@ -29,6 +29,7 @@ class Poacher:
         self.visible: bool = False
         self.animals_caught: int = 0
         self._target: Vector2 | None = None
+        self.captured = False
 
     def choose_random_target(self, board_width: int, board_height: int) -> None:
         """
@@ -39,14 +40,21 @@ class Poacher:
             random.uniform(0, board_height)
         )
 
-    def update(self, dt: float, board_size: tuple[int,int]) -> None:
+    # ------------------------------------------------------------- frame-update
+    def update(self, dt: float, board: "Board") -> None:
         """
-        Called every frame with dt seconds elapsed.
-        Wanders toward target; if none or reached, pick a new one.
+        Wander toward a random target every frame.
+        `board` is supplied so we can query its current width/height.
         """
-        if self._target is None or self.position.distance_to(self._target) < 0.2:
-            self.choose_random_target(*board_size)
+        if self.captured:
+            return  # already taken by a ranger
 
+        # pick a new wander target if none or reached
+        if (self._target is None or
+                self.position.distance_to(self._target) < 0.2):
+            self.choose_random_target(board.width, board.height)
+
+        # move toward that target
         direction = (self._target - self.position).normalize()
         self.position += direction * self.speed * dt
 
