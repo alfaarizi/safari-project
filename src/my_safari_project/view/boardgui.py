@@ -157,10 +157,25 @@ class BoardGUI:
             c = jeep.position  # centre of jeep in world coords
             if not (min_x - 2 <= c.x < max_x + 2 and min_y - 2 <= c.y < max_y + 2):
                 continue
+
+            # Get the jeep's direction/rotation angle
+            # You'll need to add a direction or heading attribute to your jeep class
+            angle = getattr(jeep, 'heading', 0)  # default to 0 if heading doesn't exist
+
+            # Rotate the jeep image
+            rotated_jeep = pygame.transform.rotate(self.jeep, -angle)  # negative angle because pygame rotates clockwise
+
+            # Scale the rotated image
+            scaled_jeep = pygame.transform.scale(rotated_jeep, (jw, jh))
+
+            # Get the new rect for proper positioning (important after rotation)
+            jeep_rect = scaled_jeep.get_rect()
+
             # top-left pixel so the jeep is centred on (c.x,c.y)
-            px = ox + int((c.x - min_x) * side - jw / 2)
-            py = oy + int((c.y - min_y) * side - jh / 2)
-            screen.blit(pygame.transform.scale(self.jeep, (jw, jh)), (px, py))
+            px = ox + int((c.x - min_x) * side - jeep_rect.width / 2)
+            py = oy + int((c.y - min_y) * side - jeep_rect.height / 2)
+
+            screen.blit(scaled_jeep, (px, py))
 
         # ---------- rangers / poachers -------------------------
         for entity, img in (

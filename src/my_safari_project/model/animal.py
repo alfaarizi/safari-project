@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from my_safari_project.model.board import Board
     from my_safari_project.model.field import Field
 
-class AnimalSpecies[Enum]:
+class AnimalSpecies(Enum):
     HYENA = 0
     LION = 1
     TIGER = 2
