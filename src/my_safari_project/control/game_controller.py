@@ -1,9 +1,5 @@
 import random
 from enum import Enum
-import json
-import pickle
-import os
-from datetime import datetime
 from my_safari_project.model.timer import Timer 
 from my_safari_project.model.timespeed import TimeSpeed
 from my_safari_project.model.board import Board
