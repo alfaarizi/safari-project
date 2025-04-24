@@ -19,6 +19,10 @@ class Jeep:
         # visual
         self.heading: float       = 0.0  # degrees, 0 → east
 
+        # logic
+        self.is_available = True
+        self.current_passengers = 0
+
     def set_path(self, waypoints: List[Vector2]):
         """
         waypoints: list of integer tile coords (e.g. Vector2(x,y)),
@@ -35,6 +39,7 @@ class Jeep:
     def update(self, dt: float):
         """Move along the current path, updating position _and_ heading."""
         if not self._path or self._idx >= len(self._path):
+            self.is_available = False
             return
 
         target = self._path[self._idx]

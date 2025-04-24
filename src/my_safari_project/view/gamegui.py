@@ -1,19 +1,14 @@
 from __future__ import annotations
-import random
 import sys
-
 import pygame
-from pygame.math import Vector2
-
-from my_safari_project.model.board import Board
-from my_safari_project.model.capital import Capital
-from my_safari_project.model.ranger import Ranger
-from my_safari_project.model.poacher import Poacher
-from my_safari_project.control.game_controller import DifficultyLevel
-from my_safari_project.model.timer import Timer
 
 from my_safari_project.view.boardgui import BoardGUI
-from my_safari_project.control.wildlife_ai import WildlifeAI
+from my_safari_project.control.game_controller import (
+    GameController,
+    RANGER_COST, PLANT_COST, POND_COST,
+    HYENA_COST, LION_COST, TIGER_COST,
+    BUFFALO_COST, ELEPHANT_COST, GIRAFFE_COST, HIPPO_COST, ZEBRA_COST
+)
 
 # window & layout constants
 SCREEN_W, SCREEN_H = 1080, 720
@@ -29,50 +24,18 @@ BOARD_RECT = pygame.Rect(
     SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H
 )
 
-# how fast new poachers spawn
-POACHER_INTERVAL = 20.0
-# maximum concurrently on board
-MAX_POACHERS     = 6
-
-# how many real seconds = one in-game day
-GAME_SEC_PER_DAY = 5.0
-
-
 class GameGUI:
-    def __init__(self, difficulty: DifficultyLevel):
+
+    def __init__(self, control: GameController):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
         pygame.display.set_caption("Safari – prototype")
 
-        # Difficulty‐based parameters
-        self.difficulty = difficulty
-        if difficulty == DifficultyLevel.EASY:
-            init_balance      = 1500.0
-            self._poacher_ivl = 30.0
-            self._max_poachers = 4
-        elif difficulty == DifficultyLevel.NORMAL:
-            init_balance      = 1000.0
-            self._poacher_ivl = 20.0
-            self._max_poachers = 6
-        else:
-            init_balance      =  500.0
-            self._poacher_ivl = 10.0
-            self._max_poachers = 8
+        # Global Control
+        self.control: GameController = control
 
-        # MODEL
-        self.board   = Board(45, 40)
-        self.capital = Capital(init_balance)
-        self.wildlife_ai = WildlifeAI(self.board, self.capital)
-
-        # our global timer
-        self.timer = Timer()
-        self._poacher_timer = 0.0
-        self.elapsed_real_seconds = 0.0
-
-        # VIEW
-        self.board_gui = BoardGUI(self.board)
-
-        # CONTROL
+        # View
+        self.board_gui = BoardGUI(self.control.board)
 
         # UI fonts
         self.font_small  = pygame.font.SysFont("Verdana", 16)
@@ -80,55 +43,63 @@ class GameGUI:
         self.font_large  = pygame.font.SysFont("Verdana", 28, bold=True)
 
         # shop & feedback state
-        self.running        = True
         self.feedback       = ""
         self.feedback_timer = 0.0
         self.feedback_alpha = 0
         self.shop_items     = [
-            {"name": "Ranger", "cost": 150},
-            {"name": "Plant",  "cost":  20},
-            {"name": "Pond",   "cost": 200},
-            {"name": "Hyena",   "cost": 60},
-            {"name": "Lion",   "cost": 150},
-            {"name": "Tiger",   "cost": 180},
-            {"name": "Buffalo",   "cost": 100},
-            {"name": "Elephant",   "cost": 300},
-            {"name": "Giraffe",   "cost": 150},
-            {"name": "Hippo",   "cost": 175},
-            {"name": "Zebra",   "cost": 130}
+            {"name": "Ranger",      "cost": RANGER_COST},
+            {"name": "Plant",       "cost": PLANT_COST},
+            {"name": "Pond",        "cost": POND_COST},
+            {"name": "Hyena",       "cost": HYENA_COST},
+            {"name": "Lion",        "cost": LION_COST},
+            {"name": "Tiger",       "cost": TIGER_COST},
+            {"name": "Buffalo",     "cost": BUFFALO_COST},
+            {"name": "Elephant",    "cost": ELEPHANT_COST},
+            {"name": "Giraffe",     "cost": GIRAFFE_COST},
+            {"name": "Hippo",       "cost": HIPPO_COST},
+            {"name": "Zebra",       "cost": ZEBRA_COST}
         ]
         self.item_rects = []
         self.hover_item = -1
 
         # start with a single ranger
-        self._spawn_ranger()
+        self.control.spawn_poacher()
 
+    # ————————————————————————————————————————————————————————————————————— Event Handling
 
-    def run(self):
-        """Main loop."""
-        while self.running:
-            # tick() both returns the real‐dt and internally advances game‐time
-            raw_dt = self.timer.tick()
-            dt     = min(raw_dt, 0.02)  # clamp to avoid large jumps
-
-            # accumulate real seconds if you need them
-            self.elapsed_real_seconds += dt
-
-            self.wildlife_ai.update(dt)
-            self._handle_events()
-            self._update_sim(dt)
-            self._draw()
-
+    def update(self, dt: float):
+        self._update_ui(dt)
+        self._handle_events()
+        self._draw()
+    
+    def show_feedback(self, msg: str):
+        self.feedback       = msg
+        self.feedback_timer = 2.0
+        self.feedback_alpha = 255
+    
+    def exit(self):
         pygame.quit()
         sys.exit()
 
+    def _update_ui(self, dt: float):
+        # centre camera on first jeep if any
+        if self.control.board.jeeps:
+            self.board_gui.follow(self.control.board.jeeps[0].position)
 
-    # ————————————————————————————————————————————————————————————————————— Event Handling
+        # day/night overlay
+        self.board_gui.update_day_night(dt)
+
+        if self.feedback_timer > 0:
+            self.feedback_timer -= dt
+            self.feedback_alpha = int(255 * min(1.0, self.feedback_timer * 2))
+        else:
+            self.feedback_alpha = 0
+            self.feedback = ""
 
     def _handle_events(self):
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
-                self.running = False
+                self.control.running = False
             elif ev.type == pygame.MOUSEMOTION:
                 self.hover_item = -1
                 for i, r in enumerate(self.item_rects):
@@ -140,134 +111,23 @@ class GameGUI:
                     if r.collidepoint(ev.pos):
                         self._buy_item(i)
 
-
     def _buy_item(self, index: int):
         item = self.shop_items[index]
-        if self.capital.deductFunds(item["cost"]):
+        if self.control.capital.deductFunds(item["cost"]):
             if item["name"] == "Ranger":
-                self._spawn_ranger()
+                self.control.spawn_ranger()
             elif item["name"] == "Plant":
-                self._spawn_plant()
+                self.control.spawn_plant()
             elif item["name"] == "Pond":
-                self._spawn_pond()
+                self.control.spawn_pond()
             elif item["name"] in [
                 "Hyena", "Lion", "Tiger", 
                 "Buffalo", "Elephant", "Giraffe", "Hippo", "Zebra"
             ]:
-                self._spawn_animal(item["name"].upper())
-            self._show_feedback(f"Purchased {item['name']} for ${item['cost']}")
+                self.control.spawn_animal(item["name"].upper())
+            self.show_feedback(f"Purchased {item['name']} for ${item['cost']}")
         else:
-            self._show_feedback("Insufficient funds!")
-
-
-    # ————————————————————————————————————————————————————————————————————— Spawning
-
-    def _random_tile(self) -> Vector2:
-        return Vector2(
-            random.randint(0, self.board.width  - 1),
-            random.randint(0, self.board.height - 1)
-        )
-
-    def _spawn_ranger(self):
-        rid = len(self.board.rangers) + 1
-        r = Ranger(
-            rid,
-            f"R{rid}",
-            salary=50,
-            position=self._random_tile()
-        )
-        self.board.rangers.append(r)
-
-    def _spawn_poacher(self):
-        pid = len(self.board.poachers) + 1
-        p = Poacher(pid, f"P{pid}", position=self._random_tile())
-        self.board.poachers.append(p)
-
-    def _spawn_plant(self):
-        from my_safari_project.model.plant import Plant
-        pid = len(self.board.plants) + 1
-        self.board.plants.append(Plant(
-            pid,
-            self._random_tile(),
-            "Bush", 20, 0.0, 1, True
-        ))
-
-    def _spawn_animal(self, species_name):
-        import random
-        from my_safari_project.model.animal import AnimalSpecies
-        from my_safari_project.model.carnivore import Carnivore
-        from my_safari_project.model.herbivore import Herbivore
-        properties = {
-            # species: (class, speed, value, lifespan)
-            AnimalSpecies.HYENA:    (Carnivore, 1.5, 60,  random.randint(5, 8)),
-            AnimalSpecies.LION:     (Carnivore, 1.8, 150, random.randint(10, 15)),
-            AnimalSpecies.TIGER:    (Carnivore, 2.0, 180, random.randint(8, 12)),
-            AnimalSpecies.BUFFALO:  (Herbivore, 1.2, 100, random.randint(7, 10)),
-            AnimalSpecies.ELEPHANT: (Herbivore, 0.8, 300, random.randint(18,25)),
-            AnimalSpecies.GIRAFFE:  (Herbivore, 1.4, 150, random.randint(13, 18)),
-            AnimalSpecies.HIPPO:    (Herbivore, 0.9, 175, random.randint(15, 22)),
-            AnimalSpecies.ZEBRA:    (Herbivore, 1.7, 130, random.randint(6, 9))
-        }
-        species = getattr(AnimalSpecies, species_name.upper())
-        animal_class, speed, value, lifespan = properties[species]
-        self.board.animals.append(animal_class(
-            animal_id=len(self.board.animals) + 1,
-            species=species,
-            position=self._random_tile(),
-            speed=speed,
-            value=value,
-            age=0,
-            lifespan=lifespan
-        ))
-     
-    def _spawn_pond(self):
-        from my_safari_project.model.pond import Pond
-        pid = len(self.board.ponds) + 1
-        self.board.ponds.append(Pond(
-            pid,
-            self._random_tile(),
-            "Pond", 0, 0, 0, 0
-        ))
-
-
-    # ————————————————————————————————————————————————————————————————————— Simulation Update
-
-    # -- Simulation Update  ---------------------------------------
-    def _update_sim(self, dt: float):
-        # board entities (jeeps grow / move)
-        self.board.update(dt)
-
-        # centre camera on first jeep if any
-        if self.board.jeeps:
-            self.board_gui.follow(self.board.jeeps[0].position)
-
-        # day/night overlay
-        self.board_gui.update_day_night(dt)
-
-        # auto-spawn poachers
-        if len(self.board.poachers) < self._max_poachers:
-            self._poacher_timer += dt
-            if self._poacher_timer >= self._poacher_ivl:
-                self._poacher_timer = 0.0
-                self._spawn_poacher()
-
-        # move poachers & rangers & animals
-        for p in list(self.board.poachers):
-            p.update(dt, self.board)
-        for r in self.board.rangers:
-            r.update(dt, self.board)
-        for a in self.board.animals:
-            a.update(dt, self.board)
-
-        # feedback fade-out
-        if self.feedback_timer > 0:
-            self.feedback_timer -= dt
-            self.feedback_alpha = int(255 * min(1.0, self.feedback_timer * 2))
-        else:
-            self.feedback_alpha = 0
-            self.feedback = ""
-
-    # ————————————————————————————————————————————————————————————————————— Rendering
+            self.show_feedback("Insufficient funds!")
 
     def _draw(self):
         # background
@@ -304,13 +164,13 @@ class GameGUI:
         pygame.draw.rect(self.screen, (60,70,90), (0,0,SCREEN_W, TOP_BAR_H))
         # show tourist & animal counts
         x = margin
-        for label in [f"Tourists: {len(self.board.tourists)}",
-                      f"Animals:   {len(self.board.animals)}"]:
+        for label in [f"Tourists: {len(self.control.board.tourists)}",
+                      f"Animals:   {len(self.control.board.animals)}"]:
             w = draw_box(label, x)
             x += w + margin
 
         # capital on right
-        draw_box(f"Capital: ${self.capital.getBalance():.0f}", margin, {
+        draw_box(f"Capital: ${self.control.capital.getBalance():.0f}", margin, {
             "from_right": True, "background_color": (0,100,0)
         })
 
@@ -340,8 +200,8 @@ class GameGUI:
                           BOTTOM_BAR_H))
 
         # get date/time from timer
-        date, time_str = self.timer.get_date_time()
-        game_time      = self.timer.get_game_time()
+        date, time_str = self.control.timer.get_date_time()
+        game_time      = self.control.timer.get_game_time()
 
         x = margin
         for unit, val in list(game_time.items())[:4]:
@@ -391,11 +251,5 @@ class GameGUI:
         self.screen.blit(surf, (x,y))
 
 
-    def _show_feedback(self, msg: str):
-        self.feedback       = msg
-        self.feedback_timer = 2.0
-        self.feedback_alpha = 255
-
-
-if __name__ == "__main__":
-    GameGUI(DifficultyLevel.NORMAL).run()
+# if __name__ == "__main__":
+#     GameGUI(DifficultyLevel.NORMAL).run()

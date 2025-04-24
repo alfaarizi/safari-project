@@ -25,7 +25,7 @@ HIGHLIGHT = (128, 200, 60)
 SIDEBAR_COLOR = (50, 50, 50)
 
 # Screen setup
-from my_safari_project.view.gamegui import GameGUI
+from my_safari_project.control.game_controller import GameController
 
 # Initialize Pygame modules
 pygame.init()
@@ -121,7 +121,7 @@ def draw_difficulty_selector(left_x, top_y):
         bg_color = PASTEL_YELLOW if i == selected_difficulty else PASTEL_PINK
         pygame.draw.rect(screen, bg_color, rect, border_radius=10)
         pygame.draw.rect(screen, HIGHLIGHT, rect, 2, border_radius=10)
-        text = font_small.render(level.value, True, color)
+        text = font_small.render(level.name.capitalize(), True, color)
         screen.blit(text, text.get_rect(center=rect.center))
 
 def handle_difficulty_click(pos, left_x, top_y):
@@ -134,7 +134,7 @@ def handle_difficulty_click(pos, left_x, top_y):
         rect = pygame.Rect(x, top_y, button_width, button_height)
         if rect.collidepoint(pos):
             selected_difficulty = i
-            print("Selected difficulty:", difficulty_levels[i].value)
+            print("Selected difficulty:", difficulty_levels[i].name)
 
 def toggle_fullscreen():
     global fullscreen, screen, WIDTH, HEIGHT
@@ -153,12 +153,12 @@ def main_menu():
 
     def new_game():
         difficulty = difficulty_levels[selected_difficulty]
-        print(f"Starting game with difficulty: {difficulty.value}")
+        print(f"Starting game with difficulty: {difficulty.name}")
         width, height = screen.get_size()
         pygame.mixer.music.stop()
         pygame.quit()
-        gui = GameGUI(difficulty)
-        gui.run()
+        control: GameController = GameController(difficulty) # changed to control
+        control.run()
 
     def load_game():
         root = tk.Tk()
