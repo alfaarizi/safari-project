@@ -168,10 +168,6 @@ class Board:
                 new_goal  = self.entrance if jeep.returning else self.exit
                 jeep.set_path(self._build_path(new_start, new_goal))
 
-        for a in self.animals:
-            if a.alive:
-                a.update(dt, self.width, self.height)
-
     # --------------------------------------------------------- board growth
     def _expand_right(self):
         """Add one column on the right."""
