@@ -84,6 +84,14 @@ class GameGUI:
             {"name": "Ranger", "cost": 150},
             {"name": "Plant",  "cost":  20},
             {"name": "Pond",   "cost": 200},
+            {"name": "Hyena",   "cost": 60},
+            {"name": "Lion",   "cost": 150},
+            {"name": "Tiger",   "cost": 180},
+            {"name": "Buffalo",   "cost": 100},
+            {"name": "Elephant",   "cost": 300},
+            {"name": "Giraffe",   "cost": 150},
+            {"name": "Hippo",   "cost": 175},
+            {"name": "Zebra",   "cost": 130}
         ]
         self.item_rects = []
         self.hover_item = -1
@@ -137,6 +145,11 @@ class GameGUI:
                 self._spawn_plant()
             elif item["name"] == "Pond":
                 self._spawn_pond()
+            elif item["name"] in [
+                "Hyena", "Lion", "Tiger", 
+                "Buffalo", "Elephant", "Giraffe", "Hippo", "Zebra"
+            ]:
+                self._spawn_animal(item["name"].upper())
             self._show_feedback(f"Purchased {item['name']} for ${item['cost']}")
         else:
             self._show_feedback("Insufficient funds!")
@@ -174,6 +187,34 @@ class GameGUI:
             "Bush", 20, 0.0, 1, True
         ))
 
+    def _spawn_animal(self, species_name):
+        import random
+        from my_safari_project.model.animal import AnimalSpecies
+        from my_safari_project.model.carnivore import Carnivore
+        from my_safari_project.model.herbivore import Herbivore
+        properties = {
+            # species: (class, speed, value, lifespan)
+            AnimalSpecies.HYENA:    (Carnivore, 1.5, 60,  random.randint(5, 8)),
+            AnimalSpecies.LION:     (Carnivore, 1.8, 150, random.randint(10, 15)),
+            AnimalSpecies.TIGER:    (Carnivore, 2.0, 180, random.randint(8, 12)),
+            AnimalSpecies.BUFFALO:  (Herbivore, 1.2, 100, random.randint(7, 10)),
+            AnimalSpecies.ELEPHANT: (Herbivore, 0.8, 300, random.randint(18,25)),
+            AnimalSpecies.GIRAFFE:  (Herbivore, 1.4, 150, random.randint(13, 18)),
+            AnimalSpecies.HIPPO:    (Herbivore, 0.9, 175, random.randint(15, 22)),
+            AnimalSpecies.ZEBRA:    (Herbivore, 1.7, 130, random.randint(6, 9))
+        }
+        species = getattr(AnimalSpecies, species_name.upper())
+        animal_class, speed, value, lifespan = properties[species]
+        self.board.animals.append(animal_class(
+            animal_id=len(self.board.animals) + 1,
+            species=species,
+            position=self._random_tile(),
+            speed=speed,
+            value=value,
+            age=0,
+            lifespan=lifespan
+        ))
+     
     def _spawn_pond(self):
         from my_safari_project.model.pond import Pond
         pid = len(self.board.ponds) + 1
@@ -186,46 +227,40 @@ class GameGUI:
 
     # ————————————————————————————————————————————————————————————————————— Simulation Update
 
+    # -- Simulation Update  ---------------------------------------
     def _update_sim(self, dt: float):
+        # board entities (jeeps grow / move)
         self.board.update(dt)
 
+        # centre camera on first jeep if any
         if self.board.jeeps:
             self.board_gui.follow(self.board.jeeps[0].position)
+
+        # day/night overlay
         self.board_gui.update_day_night(dt)
 
-        # automatically spawn new poachers up to the limit
+        # auto-spawn poachers
         if len(self.board.poachers) < self._max_poachers:
             self._poacher_timer += dt
             if self._poacher_timer >= self._poacher_ivl:
                 self._poacher_timer = 0.0
                 self._spawn_poacher()
 
-        # move each poacher
-        for p in self.board.poachers:
-            p.update(dt, (self.board.width, self.board.height))
-
-        # simple ranger AI: chase + eliminate
+        # move poachers & rangers & animals
+        for p in list(self.board.poachers):
+            p.update(dt, self.board)
         for r in self.board.rangers:
-            visible = [p for p in self.board.poachers if p.is_visible_to(r)]
-            if visible:
-                target = min(visible, key=lambda p: r.position.distance_to(p.position))
-                r.chase_poacher(target)
-                if r.eliminate_poacher(target):
-                    self.capital.addFunds(50)
-            else:
-                r.patrol(self.board.width, self.board.height)
+            r.update(dt, self.board)
+        for a in self.board.animals:
+            a.update(dt, self.board)
 
-        if self.board.jeeps:
-            self.board_gui.follow(self.board.jeeps[0].position)
-
-        # fade out any feedback message
+        # feedback fade-out
         if self.feedback_timer > 0:
             self.feedback_timer -= dt
             self.feedback_alpha = int(255 * min(1.0, self.feedback_timer * 2))
         else:
             self.feedback_alpha = 0
-            self.feedback       = ""
-
+            self.feedback = ""
 
     # ————————————————————————————————————————————————————————————————————— Rendering
 
@@ -279,11 +314,11 @@ class GameGUI:
         margin, oval_h = 20, 50
         def draw_oval(txt, x_pos):
             surf = self.font_medium.render(txt, True, (255,255,255))
-            o_w = surf.get_width() + 40
+            oval_w = surf.get_width() + 40
             rect = pygame.Rect(
                 x_pos,
                 (SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - oval_h)//2),
-                o_w, oval_h
+                oval_w, oval_h
             )
             pygame.draw.ellipse(self.screen, (40,45,60), rect)
             pygame.draw.ellipse(self.screen, (255,255,255), rect, 2)
@@ -291,7 +326,7 @@ class GameGUI:
                 rect.x + (rect.width - surf.get_width())//2,
                 rect.y + (rect.height - surf.get_height())//2
             ))
-            return o_w
+            return oval_w
 
         # fill
         pygame.draw.rect(self.screen, (60,70,90),

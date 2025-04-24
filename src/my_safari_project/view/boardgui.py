@@ -54,6 +54,16 @@ class BoardGUI:
         self.jeep    = self._load_img(root, "jeep")
         self.ranger  = self._load_img(root, "ranger")
         self.poacher = self._load_img(root, "poacher")
+        self.animals   = [
+            self._load_img(root,"carnivores/hyena"),
+            self._load_img(root,"carnivores/lion"),
+            self._load_img(root,"carnivores/tiger"),
+            self._load_img(root,"herbivores/buffalo"),
+            self._load_img(root,"herbivores/elephant"),
+            self._load_img(root,"herbivores/giraffe"),
+            self._load_img(root,"herbivores/hippo"),
+            self._load_img(root,"herbivores/zebra")
+        ]
 
     # -------------------- external API ------------------------
     def follow(self, world_pos: Vector2):
@@ -112,7 +122,7 @@ class BoardGUI:
             pygame.draw.rect(screen, road_col, (px, py, side, side))
 
         # ---------- ponds / plants -----------------------------
-        pw, ph = int(side * 1.5), int(side * 1.2)
+        pw, ph = side, side
         for pond in self.board.ponds:
             loc = pond.location
             if not (min_x-1 <= loc.x < max_x+1 and min_y-1 <= loc.y < max_y+1):
@@ -131,6 +141,15 @@ class BoardGUI:
             py = oy + int((loc.y - min_y) * side - (gh - side))
             screen.blit(pygame.transform.scale(self.plant, (gw, gh)),
                         (px, py))
+            
+        # ---------- animals -----------------------------
+        aw, ah = side, side
+        for animal in self.board.animals:
+            loc = getattr(animal, "position", Vector2(0,0))
+            px = ox + int((loc.x - min_x) * side)
+            py = oy + int((loc.y - min_y) * side)
+            screen.blit(pygame.transform.scale(self.animals[animal.species.value], (aw, ah)),
+                        (px, py))
 
         # ---------- jeeps (2×2) --------------------------------
         jw = jh = side * 2
@@ -138,24 +157,41 @@ class BoardGUI:
             c = jeep.position  # centre of jeep in world coords
             if not (min_x - 2 <= c.x < max_x + 2 and min_y - 2 <= c.y < max_y + 2):
                 continue
+
+            # Get the jeep's direction/rotation angle
+            # You'll need to add a direction or heading attribute to your jeep class
+            angle = getattr(jeep, 'heading', 0)  # default to 0 if heading doesn't exist
+
+            # Rotate the jeep image
+            rotated_jeep = pygame.transform.rotate(self.jeep, -angle)  # negative angle because pygame rotates clockwise
+
+            # Scale the rotated image
+            scaled_jeep = pygame.transform.scale(rotated_jeep, (jw, jh))
+
+            # Get the new rect for proper positioning (important after rotation)
+            jeep_rect = scaled_jeep.get_rect()
+
             # top-left pixel so the jeep is centred on (c.x,c.y)
-            px = ox + int((c.x - min_x) * side - jw / 2)
-            py = oy + int((c.y - min_y) * side - jh / 2)
-            screen.blit(pygame.transform.scale(self.jeep, (jw, jh)), (px, py))
+            px = ox + int((c.x - min_x) * side - jeep_rect.width / 2)
+            py = oy + int((c.y - min_y) * side - jeep_rect.height / 2)
+
+            screen.blit(scaled_jeep, (px, py))
 
         # ---------- rangers / poachers -------------------------
-        for entity, img in (
-            (self.board.rangers,  self.ranger),
-            (self.board.poachers, self.poacher)
-        ):
-            for e in entity:
-                loc = e.position
-                if not (min_x-1 <= loc.x < max_x+1 and min_y-1 <= loc.y < max_y+1):
-                    continue
-                px = ox + int((loc.x - min_x) * side)
-                py = oy + int((loc.y - min_y) * side)
-                screen.blit(pygame.transform.scale(img, (side, side)),
-                            (px, py))
+        # Draw rangers unconditionally
+        for r in self.board.rangers:
+            rx, ry = int(r.position.x), int(r.position.y)
+            if min_x <= rx < max_x and min_y <= ry < max_y:
+                px = ox + (rx - min_x) * side
+                py = oy + (ry - min_y) * side
+                screen.blit(pygame.transform.scale(self.ranger, (side, side)), (px, py))
+
+        # Draw poachers only when visible to any ranger
+        for p in self.board.poachers:
+            if any(p.is_visible_to(r) for r in self.board.rangers):
+                px = ox + int((p.position.x - min_x) * side)
+                py = oy + int((p.position.y - min_y) * side)
+                screen.blit(pygame.transform.scale(self.poacher, (side, side)), (px, py))
 
         # ---------- grid ---------------------------------------
         grid_col = (80, 80, 80)

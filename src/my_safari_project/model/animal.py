@@ -1,11 +1,26 @@
+import random
+
 from pygame.math import Vector2
 from abc import ABC
 from typing import List, TypeVar, Generic, Union, Optional, TYPE_CHECKING
+from enum import Enum
 
 if TYPE_CHECKING:
+    from my_safari_project.model.plant import Plant
+    from my_safari_project.model.herbivore import Herbivore
     from my_safari_project.model.pond import Pond
     from my_safari_project.model.board import Board
     from my_safari_project.model.field import Field
+
+class AnimalSpecies(Enum):
+    HYENA = 0
+    LION = 1
+    TIGER = 2
+    BUFFALO = 3
+    ELEPHANT = 4
+    GIRAFFE = 5
+    HIPPO = 6
+    ZEBRA = 7
 
 T = TypeVar('T', bound=Union["Plant", "Herbivore"])
 
@@ -14,7 +29,7 @@ class Animal(ABC, Generic[T]):
     def __init__(
         self, 
         animal_id: int,
-        group_id: int, 
+        species: AnimalSpecies, 
         position: Vector2, 
         speed: float,
         value: int, 
@@ -22,7 +37,7 @@ class Animal(ABC, Generic[T]):
         lifespan: int
     ):
         self.animal_id: int = animal_id
-        self.group_id: int = group_id
+        self.species: AnimalSpecies = species
         self.position: Vector2 = position
         self.speed: float = speed
         self.value: int = value
@@ -31,13 +46,32 @@ class Animal(ABC, Generic[T]):
         self.alive: bool = True
         self.hunger: int = 0 # {0..10}
         self.thirst: int = 0 # {0..10}
+        self._target: Vector2 | None = None
 
-    def move(self, target: Vector2):
-        """8 Directional Movement in one step: to be improved"""
+    def move(self, target: Vector2,dt: float):
         direction = target - self.position
-        if direction.length() > 0:
-            direction = direction.normalize() * self.speed
-        self.position += direction
+        dist = direction.length()
+        if dist == 0:
+            return
+        # normalize and step
+        step = min(dist, self.speed * dt)
+        self.position += direction.normalize() * step
+
+    def update(self, dt: float, board: "Board") -> None:
+        """
+        Very-simple AI: wander to a random tile at self.speed.
+        Called once per frame from Board / GameGUI.
+        """
+        #  choose a destination if we don’t have one or we reached it
+        if (self._target is None or
+                self.position.distance_to(self._target) < 0.2):
+            self._target = Vector2(
+                random.uniform(0, board.width - 1),
+                random.uniform(0, board.height - 1)
+            )
+
+        # walk toward that tile centre
+        self.move(self._target, dt)
 
     def get_surroundings(self, board: "Board") -> List["Field"]:
         """Returns the nearby fields on the board."""
@@ -71,7 +105,8 @@ class Animal(ABC, Generic[T]):
         """Reproduce if target is the same species and both are adults"""
         if isinstance(target, self.__class__) and self.is_adult() and target.is_adult():
             return self.__class__(
-                self.group_id, 
+                self.animal_id,
+                self.species, 
                 self.position, 
                 self.speed, 
                 self.value, 
