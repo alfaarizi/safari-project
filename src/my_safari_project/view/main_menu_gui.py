@@ -139,8 +139,12 @@ def main_menu():
 
         base, ext = os.path.splitext(file_path)
         save_base = base  # strip .json
-        controller = GameController(0, 0, 0.0, difficulty_levels[selected_difficulty])
+        # Temporary dummy controller just for loading
+        dummy_difficulty = difficulty_levels[selected_difficulty]
+        controller = GameController(10, 10, 1000.0, dummy_difficulty)  # use safe defaults ≥ 5
         success = controller.load_game(save_base)
+
+
         if success:
             print("Loaded save:", save_base)
             pygame.mixer.music.stop()

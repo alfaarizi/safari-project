@@ -60,7 +60,6 @@ class GameController:
         difficulty: DifficultyLevel
     ):
         self.board = Board(board_width, board_height)
-        self.board.initializeBoard()
         self.timer = Timer() 
         self.capital = Capital(init_balance)
         self.wildlife_ai = WildlifeAI(self.board, self.capital)
@@ -265,42 +264,40 @@ class GameController:
             if not (os.path.exists(f"{file_path}.json") and os.path.exists(f"{file_path}.pickle")):
                 print("Save files not found.")
                 return False
-                
+
             with open(f"{file_path}.pickle", "rb") as pickle_file:
                 pickle_data = pickle.load(pickle_file)
                 self.board = pickle_data["board"]
                 self.wildlife_ai = pickle_data["wildlife_ai"]
                 self.wildlife_ai.board = self.board
-                
+
             with open(f"{file_path}.json", "r") as json_file:
                 game_state = json.load(json_file)
-            
+
             self.difficulty_level = DifficultyLevel(game_state["difficulty_level"])
             self.game_state = game_state["game_state"]
-            
-            self.timer = Timer() 
+
             self.timer.elapsed_seconds = game_state["timer_data"]["elapsed_seconds"]
-            
             self.capital = Capital(game_state["capital_balance"])
             self.capital.monthlyIncome = game_state["monthly_income"]
             self.capital.monthlyExpenses = game_state["monthly_expenses"]
-            
-            #self.wildlife_ai.capital = self.capital
-            
+
+
+
             self.consec_success = game_state["consecutive_success_months"]
             self.won = game_state["won"]
             self.lost = game_state["lost"]
-            
+
             self.visits_req = game_state["visits_req"]
             self.herb_req = game_state["herb_req"]
             self.carn_req = game_state["carn_req"]
             self.cap_req = game_state["cap_req"]
             self.months_needed = game_state["months_needed"]
-            
+
             self.number_of_visitors = game_state["number_of_visitors"]
-            
+
             return True
-            
+
         except Exception as e:
             print(f"Error loading game: {str(e)}")
             return False

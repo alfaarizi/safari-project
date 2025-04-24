@@ -48,6 +48,7 @@ class GameGUI:
             self.capital = self.game_controller.capital
             self.timer = self.game_controller.timer
             self.difficulty = self.game_controller.difficulty_level
+            difficulty = self.difficulty 
         else:
             difficulty = controller_or_difficulty
             self.difficulty = difficulty
@@ -70,26 +71,38 @@ class GameGUI:
         pygame.display.set_caption("Safari – prototype")
 
         # Difficulty‐based parameters
-        self.difficulty = difficulty
         if difficulty == DifficultyLevel.EASY:
-            init_balance      = 1500.0
+            init_balance = 1500.0
             self._poacher_ivl = 30.0
             self._max_poachers = 4
         elif difficulty == DifficultyLevel.NORMAL:
-            init_balance      = 1000.0
+            init_balance = 1000.0
             self._poacher_ivl = 20.0
             self._max_poachers = 6
         else:
-            init_balance      =  500.0
+            init_balance = 500.0
             self._poacher_ivl = 10.0
             self._max_poachers = 8
 
-        # MODEL
-        self.board   = Board(45, 40)
-        self.capital = Capital(init_balance)
+        if isinstance(controller_or_difficulty, GameController):
+            self.game_controller = controller_or_difficulty
+            self.board = self.game_controller.board
+            self.capital = self.game_controller.capital
+            self.timer = self.game_controller.timer
+            self.difficulty = self.game_controller.difficulty_level
+        else:
+            self.difficulty = controller_or_difficulty
+            init_balance = self.difficulty.thresholds[3]
+            self.board = Board(45, 40)
+            self.capital = Capital(init_balance)
+            self.timer = Timer()
+            self.game_controller = GameController(
+                board_width=self.board.width,
+                board_height=self.board.height,
+                init_balance=init_balance,
+                difficulty=self.difficulty
+            )
 
-        # our global timer
-        self.timer = Timer()
         self._poacher_timer = 0.0
         self.elapsed_real_seconds = 0.0
 
@@ -97,19 +110,19 @@ class GameGUI:
         self.board_gui = BoardGUI(self.board)
 
         # UI fonts
-        self.font_small  = pygame.font.SysFont("Verdana", 16)
+        self.font_small = pygame.font.SysFont("Verdana", 16)
         self.font_medium = pygame.font.SysFont("Verdana", 20)
-        self.font_large  = pygame.font.SysFont("Verdana", 28, bold=True)
+        self.font_large = pygame.font.SysFont("Verdana", 28, bold=True)
 
         # shop & feedback state
-        self.running        = True
-        self.feedback       = ""
+        self.running = True
+        self.feedback = ""
         self.feedback_timer = 0.0
         self.feedback_alpha = 0
-        self.shop_items     = [
+        self.shop_items = [
             {"name": "Ranger", "cost": 150},
-            {"name": "Plant",  "cost":  20},
-            {"name": "Pond",   "cost": 200},
+            {"name": "Plant", "cost": 20},
+            {"name": "Pond", "cost": 200},
         ]
         self.item_rects = []
         self.hover_item = -1
