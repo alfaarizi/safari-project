@@ -173,24 +173,6 @@ def main_menu():
             print(f"Selected save file: {file_path}")
         else:
             print("No file selected.")
-            return
-
-        base, ext = os.path.splitext(file_path)
-        save_base = base  # strip .json
-        # Temporary dummy controller just for loading
-        dummy_difficulty = difficulty_levels[selected_difficulty]
-        controller = GameController(10, 10, 1000.0, dummy_difficulty)  # use safe defaults ≥ 5
-        success = controller.load_game(save_base)
-
-
-        if success:
-            print("Loaded save:", save_base)
-            pygame.mixer.music.stop()
-            pygame.quit()
-            gui = GameGUI(controller)
-            gui.run()
-        else:
-            print("Failed to load game.")
 
     def quit_game():
         pygame.mixer.music.stop()
