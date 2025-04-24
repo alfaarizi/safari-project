@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from my_safari_project.model.board import Board
     from my_safari_project.model.field import Field
 
-class AnimalSpecies[Enum]:
+class AnimalSpecies(Enum):
     HYENA = 0
     LION = 1
     TIGER = 2
@@ -46,11 +46,13 @@ class Animal(ABC, Generic[T]):
         self.thirst: int = 0 # {0..10}
 
     def move(self, target: Vector2):
-        """8 Directional Movement in one step: to be improved"""
         direction = target - self.position
-        if direction.length() > 0:
-            direction = direction.normalize() * self.speed
-        self.position += direction
+        dist = direction.length()
+        if dist == 0:
+            return
+        # normalize and step
+        step = min(dist, self.speed)
+        self.position += direction.normalize() * step
 
     def get_surroundings(self, board: "Board") -> List["Field"]:
         """Returns the nearby fields on the board."""

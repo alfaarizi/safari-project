@@ -148,7 +148,7 @@ class BoardGUI:
             loc = getattr(animal, "position", Vector2(0,0))
             px = ox + int((loc.x - min_x) * side)
             py = oy + int((loc.y - min_y) * side)
-            screen.blit(pygame.transform.scale(self.animals[animal.species], (aw, ah)),
+            screen.blit(pygame.transform.scale(self.animals[animal.species.value], (aw, ah)),
                         (px, py))
 
         # ---------- jeeps (2×2) --------------------------------
