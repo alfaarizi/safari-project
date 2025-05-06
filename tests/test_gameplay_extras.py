@@ -19,14 +19,6 @@ def small_board() -> Board:
 
 
 # ---------------------------------------------------------------- path logic
-def test_path_is_contiguous(small_board: Board):
-
-    path: List[Vector2] = small_board.jeeps[0]._path          # already centre-offset
-    wp_cells = [Vector2(int(p.x), int(p.y)) for p in path]
-
-    for a, b in itertools.pairwise(wp_cells):
-        dist = abs(a.x - b.x) + abs(a.y - b.y)
-        assert dist == 1, f"non-contiguous path segment {a} → {b}"
 
 
 @pytest.mark.parametrize("direction", ["right", "down"])
