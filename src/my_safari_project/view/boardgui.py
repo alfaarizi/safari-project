@@ -54,6 +54,16 @@ class BoardGUI:
         self.jeep    = self._load_img(imgs, "jeep")
         self.ranger  = self._load_img(imgs, "ranger")
         self.poacher = self._load_img(imgs, "poacher")
+        self.animals = [
+            self._load_img(imgs, "carnivores/hyena"),
+            self._load_img(imgs, "carnivores/lion"),
+            self._load_img(imgs, "carnivores/tiger"),
+            self._load_img(imgs, "herbivores/buffalo"),
+            self._load_img(imgs, "herbivores/elephant"),
+            self._load_img(imgs, "herbivores/giraffe"),
+            self._load_img(imgs, "herbivores/hippo"),
+            self._load_img(imgs, "herbivores/zebra")
+        ]
 
     # ─── camera controls (panning & zooming) ────────────────────────────────
     def follow(self, world_pos: Vector2):
@@ -182,6 +192,14 @@ class BoardGUI:
             px = ox + int((x - min_x)*side)
             py = oy + int((y - min_y)*side - (gh-side))
             screen.blit(pygame.transform.scale(self.plant, (gw, gh)), (px, py))
+        
+        # ---------- animals -----------------------------
+        aw, ah = side, side
+        for animal in self.board.animals:
+            loc = getattr(animal, "position", Vector2(0,0))
+            px = ox + int((loc.x - min_x) * side)
+            py = oy + int((loc.y - min_y) * side)
+            screen.blit(pygame.transform.scale(self.animals[animal.species.value], (aw, ah)), (px, py))
 
         # ---------- jeeps (2×2) --------------------------------
         jw = jh = side * 2
