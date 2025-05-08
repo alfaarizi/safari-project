@@ -1,10 +1,11 @@
 import random
+from pygame.math import Vector2
 
 class Plant:
     def __init__(
         self,
         plantID: int,
-        location: tuple,
+        location: Vector2,
         name: str,
         value: int,
         growthRate: float,
@@ -12,7 +13,7 @@ class Plant:
         isEatable: bool
     ):
         self.plantID: int = plantID
-        self.location: tuple = location  # (x, y)
+        self.location :Vector2 = Vector2(location)
         self.name: str = name
         self.value: int = value
         self.growthRate: float = growthRate

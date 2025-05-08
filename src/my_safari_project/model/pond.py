@@ -1,8 +1,9 @@
+from pygame.math import Vector2
 class Pond:
     def __init__(
         self,
         pondID: int,
-        location: tuple,
+        location: Vector2,
         name: str,
         buildCost: int,
         retentionCost: int,
@@ -10,7 +11,7 @@ class Pond:
         evaporationRate: float
     ):
         self.pondID: int = pondID
-        self.location: tuple = location  # (x, y)
+        self.location: Vector2 = Vector2(location)
         self.name: str = name
         self.buildCost: int = buildCost
         self.retentionCost: int = retentionCost

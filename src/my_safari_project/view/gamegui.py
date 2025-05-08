@@ -42,6 +42,12 @@ class GameGUI:
         self.control: GameController = control
         self.board_gui = BoardGUI(self.control.board)
 
+        self.state          = "DRAGGING" 
+        self.drag_item_idx  = -1
+        self.drag_pos       = (0,0)
+        self.hover_tile     = None
+        self.hover_valid    = False
+
         # fonts
         self.font_small  = pygame.font.SysFont("Verdana", 16)
         self.font_medium = pygame.font.SysFont("Verdana", 20)
@@ -100,44 +106,119 @@ class GameGUI:
 
     # ─────────────────────────── event handling ──────────────────────────────
     def _handle_events(self):
+    #     for ev in pygame.event.get():
+    #         if ev.type == pygame.QUIT:
+    #             self.control.running = False
+
+    #         elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+    #             # 1) Zoom buttons
+    #             if self.btn_zoom_in.collidepoint(ev.pos):
+    #                 self.board_gui.zoom(+1, Vector2(ev.pos), BOARD_RECT)
+    #             elif self.btn_zoom_out.collidepoint(ev.pos):
+    #                 self.board_gui.zoom(-1, Vector2(ev.pos), BOARD_RECT)
+
+    #             elif BOARD_RECT.collidepoint(ev.pos):
+    #                 self.board_gui.start_drag(Vector2(ev.pos))
+
+    #             else:
+    #                 for i, rect in enumerate(self.item_rects):
+    #                     if rect.collidepoint(ev.pos):
+    #                         self._buy_item(i)
+    #                         break
+
+    #         # Left mouse button up → stop dragging
+    #         elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
+    #             self.board_gui.stop_drag()
+
+    #         elif ev.type == pygame.MOUSEMOTION:
+    #             if self.board_gui._dragging:
+    #                 # continue panning
+    #                 self.board_gui.drag(Vector2(ev.pos), BOARD_RECT)
+    #             else:
+    #                 self.hover_item = next(
+    #                     (i for i, r in enumerate(self.item_rects)
+    #                      if r.collidepoint(ev.pos)),
+    #                     -1
+    #                 )
+
+    #         elif ev.type == pygame.MOUSEWHEEL:
+    #             # ev.y == +1 (wheel up) or -1 (wheel down)
+    #             self.board_gui.zoom(ev.y, Vector2(pygame.mouse.get_pos()), BOARD_RECT)
         for ev in pygame.event.get():
+    # ------- quit -------------------------------------------------
             if ev.type == pygame.QUIT:
                 self.control.running = False
 
+            # ------- mouse down -------------------------------------------
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                # 1) Zoom buttons
-                if self.btn_zoom_in.collidepoint(ev.pos):
-                    self.board_gui.zoom(+1, Vector2(ev.pos), BOARD_RECT)
-                elif self.btn_zoom_out.collidepoint(ev.pos):
-                    self.board_gui.zoom(-1, Vector2(ev.pos), BOARD_RECT)
-
-                elif BOARD_RECT.collidepoint(ev.pos):
+                # start dragging from the shop
+                if self.state == "DRAGGING":
+                    for i,r in enumerate(self.item_rects):
+                        if r.collidepoint(ev.pos):
+                            self.state = "DRAGGING"
+                            self.drag_item_idx = i
+                            self.drag_pos      = ev.pos
+                            self.hover_tile = None 
+                            self.hover_valid = False 
+                            break
+                # camera pan
+                if self.state == "DRAGGING" and BOARD_RECT.collidepoint(ev.pos):
                     self.board_gui.start_drag(Vector2(ev.pos))
 
-                else:
-                    for i, rect in enumerate(self.item_rects):
-                        if rect.collidepoint(ev.pos):
-                            self._buy_item(i)
-                            break
-
-            # Left mouse button up → stop dragging
-            elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
-                self.board_gui.stop_drag()
-
+            # ------- mouse move -------------------------------------------
             elif ev.type == pygame.MOUSEMOTION:
-                if self.board_gui._dragging:
-                    # continue panning
+                self.drag_pos = ev.pos
+                
+                if self.state == "DRAGGING" and self.drag_item_idx >= 0:
+                    tile = self.board_gui.screen_to_tile(ev.pos, BOARD_RECT)
+                    self.hover_tile  = tile
+                    
+                    self.hover_valid = (tile is not None and self.control.board.is_placeable(tile))
+
+                elif self.board_gui._dragging:
                     self.board_gui.drag(Vector2(ev.pos), BOARD_RECT)
                 else:
-                    self.hover_item = next(
-                        (i for i, r in enumerate(self.item_rects)
-                         if r.collidepoint(ev.pos)),
-                        -1
-                    )
+                    self.hover_item = next((i for i,r in enumerate(self.item_rects)
+                                            if r.collidepoint(ev.pos)), -1)
+                #print(tile, "blocked:", self.control.board.is_blocked(tile))
 
+
+            # ------- mouse up ---------------------------------------------
+            elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
+                if self.state == "DRAGGING" and self.drag_item_idx >= 0:
+                    if self.hover_tile is not None and self.hover_valid:
+                        self._place_item(self.drag_item_idx, self.hover_tile)
+                    else:
+                        # user clicked without dragging -> show feedback
+                        self._show_feedback("Drag the item onto the board, then release it.")
+                    #self.state         = "DRAGGING"
+                    self.drag_item_idx = -1
+                    self.hover_tile    = None
+                    self.hover_valid   = False
+                self.board_gui.stop_drag()
+
+            # ------- wheel -------------------------------------------------
             elif ev.type == pygame.MOUSEWHEEL:
-                # ev.y == +1 (wheel up) or -1 (wheel down)
                 self.board_gui.zoom(ev.y, Vector2(pygame.mouse.get_pos()), BOARD_RECT)
+
+    def _place_item(self, idx: int, tile: Vector2):
+        item = self.shop_items[idx]
+        if not self.control.capital.deductFunds(item["cost"]):
+            self._show_feedback("Insufficient funds!")
+            return
+        name = item["name"]
+        match name:
+            case "Ranger":  self.control.spawn_ranger_at(tile)
+            case "Plant":   self.control.spawn_plant_at(tile)
+            case "Pond":    self.control.spawn_pond_at(tile)
+            case _:         self.control.spawn_animal_at(name.upper(), tile)
+        self._show_feedback(f"Placed {name} for ${item['cost']}")
+        
+        if tile is None:
+           self._show_feedback("Drag the item onto the board first.")
+           return
+    
+
 
     # ───────────────────────────── shop logic ───────────────────────────────
     def _buy_item(self, index: int):
@@ -158,9 +239,40 @@ class GameGUI:
         self.feedback_alpha = 255
 
     # ───────────────────────────── drawing ───────────────────────────────────
+    # def _draw(self):
+    #     self.screen.fill((40, 45, 50))
+    #     self.board_gui.render(self.screen, BOARD_RECT)
+    #     self._draw_top_bar()
+    #     self._draw_bottom_bar()
+    #     self._draw_side_panel()
+    #     self._draw_feedback()
+    #     self._draw_zoom_buttons()
+    #     pygame.display.flip()
+
     def _draw(self):
         self.screen.fill((40, 45, 50))
-        self.board_gui.render(self.screen, BOARD_RECT)
+        #drawing the board with red/green highlight
+        self.board_gui.render(
+            self.screen,
+            BOARD_RECT,
+            hover_tile  = self.hover_tile if self.state == "DRAGGING" else None,
+            hover_valid = self.hover_valid,
+        )
+
+
+        if self.state == "DRAGGING" and self.drag_item_idx >= 0:
+            name = self.shop_items[self.drag_item_idx]["name"].lower()
+            if name in ("plant", "pond", "ranger"):
+                img = getattr(self.board_gui, name, None)# plant / pond / ranger
+            else:
+                img = self.board_gui.animals.get(name)      
+
+            if img is not None:
+                ghost = pygame.transform.scale(img, (32, 32))
+                ghost.set_alpha(180)
+                self.screen.blit(ghost, (self.drag_pos[0] - 16, self.drag_pos[1] - 16))
+                
+
         self._draw_top_bar()
         self._draw_bottom_bar()
         self._draw_side_panel()
@@ -253,7 +365,9 @@ class GameGUI:
             return
         surf = self.font_medium.render(self.feedback, True, (128,0,0))
         surf.set_alpha(self.feedback_alpha)
-        x = (SCREEN_W - surf.get_width()) // 2
+        # x = (SCREEN_W - surf.get_width()) // 2
+        # y = SCREEN_H - BOTTOM_BAR_H - surf.get_height() - 20
+        x = BOARD_RECT.x + (BOARD_RECT.width - surf.get_width()) // 2
         y = SCREEN_H - BOTTOM_BAR_H - surf.get_height() - 20
         self.screen.blit(surf, (x,y))
 

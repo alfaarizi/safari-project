@@ -272,3 +272,25 @@ class GameController:
 
     def is_game_over(self) -> bool:
         return self.won or self.lost
+    
+    
+    # ---  spawn for drag/drop -------------------------------
+    def spawn_ranger_at(self, tile: Vector2):
+        rid = len(self.board.rangers) + 1
+        self.board.rangers.append(Ranger(rid, f"R{rid}", 50, tile))
+
+    def spawn_plant_at(self, tile: Vector2):
+        from my_safari_project.model.plant import Plant
+        pid = len(self.board.plants) + 1
+        self.board.plants.append(Plant(pid, tile,
+                                    "Bush", 20, 0.0, 1, True))
+
+    def spawn_pond_at(self, tile: Vector2):
+        from my_safari_project.model.pond import Pond
+        pid = len(self.board.ponds) + 1
+        self.board.ponds.append(Pond(pid, tile,
+                                    "Pond", 0, 0, 0, 0))
+
+    def spawn_animal_at(self, species_name: str, tile: Vector2):
+        self.spawn_animal(species_name)  
+        self.board.animals[-1].position = Vector2(tile)

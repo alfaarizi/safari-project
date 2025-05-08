@@ -47,6 +47,7 @@ class Board:
         self._build_initial_road()
         self.add_jeep()
 
+
     # ---------------------------------------------------------------- road
     def _build_initial_road(self):
         # key points: entrance → random bends → exit
@@ -187,4 +188,41 @@ class Board:
         return (
             f"<Board {self.width}×{self.height} "
             f"roads={len(self.roads)} jeeps={len(self.jeeps)}>"
+        )
+
+    #---helpers--
+    def is_road(self, tile: Vector2) -> bool:
+        return any(r.pos == tile for r in self.roads)
+
+    # def is_blocked(self, tile: Vector2) -> bool:
+    #     return (
+    #         self.is_road(tile) or
+    #        any(tile == p.location for p in self.plants + self.ponds) or
+    #         any(tile == a.position for a in self.animals + self.rangers)
+    #     )
+
+    # def is_placeable(self, tile: Vector2) -> bool:
+    #     # inside board and empty
+    #     return (
+    #         0 <= tile.x < self.width and
+    #         0 <= tile.y < self.height and
+    #         not self.is_blocked(tile)
+    #     )
+    def is_blocked(self, tile: Vector2) -> bool:
+        tile = Vector2(int(tile.x), int(tile.y))
+        return (
+            self.is_road(tile)
+            or any(Vector2(int(p.location.x), int(p.location.y)) == tile for p in self.plants)
+            or any(Vector2(int(p.location.x), int(p.location.y)) == tile for p in self.ponds)
+            or any(Vector2(int(a.position.x), int(a.position.y)) == tile for a in self.animals)
+            or any(Vector2(int(r.position.x), int(r.position.y)) == tile for r in self.rangers)
+            or any(Vector2(int(po.position.x), int(po.position.y)) == tile for po in self.poachers)
+        )
+
+    def is_placeable(self, tile: Vector2) -> bool:
+        tile = Vector2(int(tile.x), int(tile.y))
+        return (
+            0 <= tile.x < self.width
+            and 0 <= tile.y < self.height
+            and not self.is_blocked(tile)
         )

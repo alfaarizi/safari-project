@@ -54,6 +54,15 @@ class BoardGUI:
         self.jeep    = self._load_img(imgs, "jeep")
         self.ranger  = self._load_img(imgs, "ranger")
         self.poacher = self._load_img(imgs, "poacher")
+        self.animals = {
+        "hyena"   : self._load_img(imgs, "carnivores/hyena"),
+        "lion"    : self._load_img(imgs, "carnivores/lion"),
+        "tiger"   : self._load_img(imgs, "carnivores/tiger"),
+        "buffalo" : self._load_img(imgs, "herbivores/buffalo"),
+        "elephant": self._load_img(imgs, "herbivores/elephant"),
+        "giraffe" : self._load_img(imgs, "herbivores/giraffe"),
+        "hippo"   : self._load_img(imgs, "herbivores/hippo"),
+        "zebra"   : self._load_img(imgs, "herbivores/zebra"),}
 
     # ─── camera controls (panning & zooming) ────────────────────────────────
     def follow(self, world_pos: Vector2):
@@ -125,7 +134,16 @@ class BoardGUI:
               c2: Tuple[int,int,int,int], t: float) -> Tuple[int,int,int,int]:
         return tuple(int(a + (b-a)*t) for a,b in zip(c1, c2))
 
-    def render(self, screen: Surface, rect: Rect):
+    # def render(self, screen: Surface, rect: Rect):
+    #     if self.board.width == 0 or self.board.height == 0:
+    #         return
+    def render(
+        self,
+        screen: Surface,
+        rect: Rect,
+        hover_tile: Vector2 | None = None,
+        hover_valid: bool = False,
+        ):
         if self.board.width == 0 or self.board.height == 0:
             return
 
@@ -216,6 +234,19 @@ class BoardGUI:
                 px = ox + int((p.position.x - min_x)*side)
                 py = oy + int((p.position.y - min_y)*side)
                 screen.blit(pygame.transform.scale(self.poacher, (side, side)), (px, py))
+                # ---------- animals -------------------------------------------------
+        aw = ah = side
+        for a in self.board.animals:
+            pos = getattr(a, "position", Vector2(0, 0))
+            if not (min_x <= pos.x < max_x and min_y <= pos.y < max_y):
+                continue
+            sprite = self.animals.get(a.species.name.lower())      # enum → "lion", "giraffe", …
+            if sprite is None:
+                continue
+            px = ox + int((pos.x - min_x) * side)
+            py = oy + int((pos.y - min_y) * side)
+            screen.blit(pygame.transform.scale(sprite, (aw, ah)), (px, py))
+
 
         # grid
         grid_col = (80,80,80)
@@ -226,9 +257,36 @@ class BoardGUI:
             y = oy + r*side
             pygame.draw.line(screen, grid_col, (ox,y), (ox+vis_w*side,y), 1)
 
+        if hover_tile is not None:
+            hx, hy = int(hover_tile.x), int(hover_tile.y)
+            if min_x <= hx < max_x and min_y <= hy < max_y:
+                px = ox + int((hx - min_x) * side)
+                py = oy + int((hy - min_y) * side)
+                colour = (0, 180, 0, 120) if hover_valid else (180, 0, 0, 120)
+                overlay = pygame.Surface((side, side), pygame.SRCALPHA)
+                overlay.fill(colour)
+                screen.blit(overlay, (px, py))
         # day/night tint
         if self.dn_opacity > 0.0:
             tint = self._lerp((255,255,255,0), (0,0,70,160), self.dn_opacity)
             ov   = pygame.Surface((vis_w*side, vis_h*side), pygame.SRCALPHA)
             ov.fill(tint)
             screen.blit(ov, (ox, oy))
+
+
+
+            #----converting pixel to tile 
+    def screen_to_tile(self, screen_pos: tuple[int,int], board_rect: Rect) -> Vector2|None:
+                """the integer tile under a screen pixel will be returned, or None if off‑board area."""
+                sx, sy = screen_pos
+                if not board_rect.collidepoint(sx, sy):
+                    return None
+                side = self.tile
+                cols = board_rect.width  // side
+                rows = board_rect.height // side
+                half_w = cols//2; half_h = rows//2
+                min_x = int(self.cam.x) - half_w - 1
+                min_y = int(self.cam.y) - half_h - 1
+                wx = min_x + (sx - board_rect.x) // side
+                wy = min_y + (sy - board_rect.y) // side
+                return Vector2(int(wx), int(wy))
