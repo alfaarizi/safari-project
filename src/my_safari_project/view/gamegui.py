@@ -180,7 +180,9 @@ class GameGUI:
                 else:
                     self.hover_item = next((i for i,r in enumerate(self.item_rects)
                                             if r.collidepoint(ev.pos)), -1)
-                #print(tile, "blocked:", self.control.board.is_blocked(tile))
+                #this line is for debugging 
+                # if self.hover_tile is not None:
+                #     print("mouse", ev.pos, "→ tile", self.hover_tile)
 
 
             # ------- mouse up ---------------------------------------------
@@ -191,7 +193,6 @@ class GameGUI:
                     else:
                         # user clicked without dragging -> show feedback
                         self._show_feedback("Drag the item onto the board, then release it.")
-                    #self.state         = "DRAGGING"
                     self.drag_item_idx = -1
                     self.hover_tile    = None
                     self.hover_valid   = False
@@ -208,10 +209,10 @@ class GameGUI:
             return
         name = item["name"]
         match name:
-            case "Ranger":  self.control.spawn_ranger_at(tile)
-            case "Plant":   self.control.spawn_plant_at(tile)
-            case "Pond":    self.control.spawn_pond_at(tile)
-            case _:         self.control.spawn_animal_at(name.upper(), tile)
+            case "Ranger":  self.control.spawn_ranger(tile)
+            case "Plant":   self.control.spawn_plant(tile)
+            case "Pond":    self.control.spawn_pond(tile)
+            case _:         self.control.spawn_animal(name.upper(), tile)
         self._show_feedback(f"Placed {name} for ${item['cost']}")
         
         if tile is None:

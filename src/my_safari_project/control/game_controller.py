@@ -153,41 +153,44 @@ class GameController:
             random.randint(0, self.board.height - 1)
         )
     
-    def spawn_ranger(self):
+    
+    def spawn_ranger(self, tile: Vector2 | None = None):
         rid = len(self.board.rangers) + 1
+        position = tile if tile else self._random_tile()
         r = Ranger(
             rid,
             f"R{rid}",
             salary=50,
-            position=self._random_tile()
+            position=position
         )
         self.board.rangers.append(r)
 
-    def spawn_plant(self):
+    def spawn_plant(self, tile: Vector2 | None = None):
         from my_safari_project.model.plant import Plant
         pid = len(self.board.plants) + 1
+        position = tile if tile else self._random_tile()
         self.board.plants.append(Plant(
             pid,
-            self._random_tile(),
+            position,
             "Bush", 20, 0.0, 1, True
         ))
 
-    def spawn_pond(self):
+    def spawn_pond(self, tile: Vector2 | None = None):
         from my_safari_project.model.pond import Pond
         pid = len(self.board.ponds) + 1
+        position = tile if tile else self._random_tile()
         self.board.ponds.append(Pond(
             pid,
-            self._random_tile(),
+            position,
             "Pond", 0, 0, 0, 0
         ))
-    
-    def spawn_animal(self, species_name):
-        import random
+
+    def spawn_animal(self, species_name, tile: Vector2 | None = None):
         from my_safari_project.model.animal import AnimalSpecies
         from my_safari_project.model.carnivore import Carnivore
         from my_safari_project.model.herbivore import Herbivore
+
         properties = {
-            # species: (class, speed, value, lifespan)
             AnimalSpecies.HYENA:    (Carnivore, 1.5, 60,  random.randint(5, 8)),
             AnimalSpecies.LION:     (Carnivore, 1.8, 150, random.randint(10, 15)),
             AnimalSpecies.TIGER:    (Carnivore, 2.0, 180, random.randint(8, 12)),
@@ -199,15 +202,19 @@ class GameController:
         }
         species = getattr(AnimalSpecies, species_name.upper())
         animal_class, speed, value, lifespan = properties[species]
+
+        position = tile if tile else self._random_tile()
+
         self.board.animals.append(animal_class(
             animal_id=len(self.board.animals) + 1,
             species=species,
-            position=self._random_tile(),
+            position=position,
             speed=speed,
             value=value,
             age=0,
             lifespan=lifespan
         ))
+
 
     def spawn_poacher(self):
         pid = len(self.board.poachers) + 1
@@ -272,25 +279,3 @@ class GameController:
 
     def is_game_over(self) -> bool:
         return self.won or self.lost
-    
-    
-    # ---  spawn for drag/drop -------------------------------
-    def spawn_ranger_at(self, tile: Vector2):
-        rid = len(self.board.rangers) + 1
-        self.board.rangers.append(Ranger(rid, f"R{rid}", 50, tile))
-
-    def spawn_plant_at(self, tile: Vector2):
-        from my_safari_project.model.plant import Plant
-        pid = len(self.board.plants) + 1
-        self.board.plants.append(Plant(pid, tile,
-                                    "Bush", 20, 0.0, 1, True))
-
-    def spawn_pond_at(self, tile: Vector2):
-        from my_safari_project.model.pond import Pond
-        pid = len(self.board.ponds) + 1
-        self.board.ponds.append(Pond(pid, tile,
-                                    "Pond", 0, 0, 0, 0))
-
-    def spawn_animal_at(self, species_name: str, tile: Vector2):
-        self.spawn_animal(species_name)  
-        self.board.animals[-1].position = Vector2(tile)

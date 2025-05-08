@@ -1,10 +1,12 @@
 # my_safari_project/view/boardgui.py
 from __future__ import annotations
+import math
 import os
 import pygame
 from pygame import Surface, Rect
 from pygame.math import Vector2
 from typing import Tuple
+from math import floor
 
 from my_safari_project.model.board import Board
 from my_safari_project.model.road  import Road
@@ -160,14 +162,20 @@ class BoardGUI:
         half_h = rect.height // (2*side)
 
         # world‐bounds shown
-        min_x = int(self.cam.x) - half_w - 1
-        min_y = int(self.cam.y) - half_h - 1
-        max_x = int(self.cam.x) + half_w + 2
-        max_y = int(self.cam.y) + half_h + 2
+        # min_x = int(self.cam.x) - half_w 
+        # min_y = int(self.cam.y) - half_h 
+        # max_x = int(self.cam.x) + half_w + 1
+        # max_y = int(self.cam.y) + half_h + 1
+        min_x = math.floor(self.cam.x - half_w )
+        min_y = math.floor(self.cam.y - half_h )
+        max_x = math.ceil (self.cam.x + half_w )
+        max_y = math.ceil(self.cam.y + half_h )
 
         # origin pixel for (min_x,min_y)
-        ox = rect.x + rect.width//2  - int((self.cam.x - min_x)*side)
-        oy = rect.y + rect.height//2 - int((self.cam.y - min_y)*side)
+        # ox = rect.x + rect.width // 2  - int((self.cam.x - min_x)*side)
+        # oy = rect.y + rect.height // 2 - int((self.cam.y - min_y)*side)
+        ox = rect.centerx - int((self.cam.x - min_x) * side)
+        oy = rect.centery - int((self.cam.y - min_y) * side)
 
         # background desert
         vis_w = max_x - min_x
@@ -275,18 +283,23 @@ class BoardGUI:
 
 
 
-            #----converting pixel to tile 
+            #----converting pixel to tile--
     def screen_to_tile(self, screen_pos: tuple[int,int], board_rect: Rect) -> Vector2|None:
-                """the integer tile under a screen pixel will be returned, or None if off‑board area."""
+
+                """ Converts a screen pixel to the integer tile it lies on.
+                Returns None when the pixel is outside BOARD_RECT  "OR"
+                when the corresponding world-tile is outside the board."""                
+                
                 sx, sy = screen_pos
                 if not board_rect.collidepoint(sx, sy):
                     return None
-                side = self.tile
-                cols = board_rect.width  // side
-                rows = board_rect.height // side
-                half_w = cols//2; half_h = rows//2
-                min_x = int(self.cam.x) - half_w - 1
-                min_y = int(self.cam.y) - half_h - 1
-                wx = min_x + (sx - board_rect.x) // side
-                wy = min_y + (sy - board_rect.y) // side
-                return Vector2(int(wx), int(wy))
+                side = self.tile #pixels per tile
+                
+                wx = self.cam.x + (sx - board_rect.centerx) / side
+                wy = self.cam.y + (sy - board_rect.centery) / side
+
+                tx, ty = floor(wx), floor(wy)
+                if not (0 <= tx < self.board.width and 0 <= ty < self.board.height):
+                  return None
+
+                return Vector2(tx, ty)

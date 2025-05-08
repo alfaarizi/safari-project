@@ -194,20 +194,6 @@ class Board:
     def is_road(self, tile: Vector2) -> bool:
         return any(r.pos == tile for r in self.roads)
 
-    # def is_blocked(self, tile: Vector2) -> bool:
-    #     return (
-    #         self.is_road(tile) or
-    #        any(tile == p.location for p in self.plants + self.ponds) or
-    #         any(tile == a.position for a in self.animals + self.rangers)
-    #     )
-
-    # def is_placeable(self, tile: Vector2) -> bool:
-    #     # inside board and empty
-    #     return (
-    #         0 <= tile.x < self.width and
-    #         0 <= tile.y < self.height and
-    #         not self.is_blocked(tile)
-    #     )
     def is_blocked(self, tile: Vector2) -> bool:
         tile = Vector2(int(tile.x), int(tile.y))
         return (
