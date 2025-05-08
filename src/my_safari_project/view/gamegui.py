@@ -2,20 +2,20 @@
 from __future__ import annotations
 
 import sys
-from typing import List
-
 import pygame
 from pygame.math import Vector2
+from typing import List
 
 from my_safari_project.view.boardgui import BoardGUI
 from my_safari_project.control.game_controller import (
     GameController,
     RANGER_COST, PLANT_COST, POND_COST,
     HYENA_COST, LION_COST, TIGER_COST,
-    BUFFALO_COST, ELEPHANT_COST, GIRAFFE_COST, HIPPO_COST, ZEBRA_COST
+    BUFFALO_COST, ELEPHANT_COST, GIRAFFE_COST,
+    HIPPO_COST, ZEBRA_COST,
 )
 
-# ────────────────────────────── layout constants ──────────────────────────────
+# ───────────────────────── layout constants ─────────────────────────
 SCREEN_W, SCREEN_H = 1080, 720
 SIDE_PANEL_W       = 320
 TOP_BAR_H          = 60
@@ -24,37 +24,54 @@ BOTTOM_BAR_H       = 80
 BOARD_RECT = pygame.Rect(
     0, TOP_BAR_H,
     SCREEN_W - SIDE_PANEL_W,
-    SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H
+    SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H,
 )
 
-ZOOM_BTN_SZ = 32        # size of the + / – buttons
+ZOOM_BTN_SZ = 32
 
-# ────────────────────────────────── GameGUI ───────────────────────────────────
+# ───────────────────────────── GameGUI ──────────────────────────────
 class GameGUI:
-    """UI layer.  Relies on an external GameController for model updates."""
+    """
+    Pure UI layer.
 
-    # ─────────────────────────────── lifecycle ────────────────────────────────
-    def __init__(self, control: GameController):
+    The only “smart” behaviour it keeps is an *optional* auto-follow of the
+    first jeep.  As soon as the player drags or pans, auto-follow is disabled
+    until they press the **F** key.
+    """
+
+    def __init__(self, controller: GameController):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
         pygame.display.set_caption("Safari – prototype")
 
-        self.control: GameController = control
-        self.board_gui = BoardGUI(self.control.board)
+        self.control    = controller
+        self.board_gui  = BoardGUI(controller.board)
+
+        # ── start fully zoomed-out (whole board visible) ────────────────
+        fit = min(
+            BOARD_RECT.width  // controller.board.width,
+            BOARD_RECT.height // controller.board.height,
+        )
+        self.full_tile        = max(4, fit)
+        self.board_gui.tile   = self.full_tile
+        self.board_gui.cam    = Vector2(
+            controller.board.width  / 2,
+            controller.board.height / 2,
+        )
+
+        # auto-follow flag (can be toggled with “F”)
+        self.auto_follow = False    # ← off until the user decides
 
         # fonts
         self.font_small  = pygame.font.SysFont("Verdana", 16)
         self.font_medium = pygame.font.SysFont("Verdana", 20)
         self.font_large  = pygame.font.SysFont("Verdana", 28, bold=True)
 
-        # zoom buttons (their pos is set every frame)
+        # zoom buttons
         self.btn_zoom_in  = pygame.Rect(0, 0, ZOOM_BTN_SZ, ZOOM_BTN_SZ)
         self.btn_zoom_out = pygame.Rect(0, 0, ZOOM_BTN_SZ, ZOOM_BTN_SZ)
 
-        # shop / feedback
-        self.feedback       = ""
-        self.feedback_timer = 0.0
-        self.feedback_alpha = 0
+        # shop & feedback
         self.shop_items: List[dict] = [
             {"name": "Ranger",   "cost": RANGER_COST},
             {"name": "Plant",    "cost": PLANT_COST},
@@ -69,15 +86,30 @@ class GameGUI:
             {"name": "Zebra",    "cost": ZEBRA_COST},
         ]
         self.item_rects: list[pygame.Rect] = []
-        self.hover_item = -1
+        self.hover_item     = -1
+        self.feedback       = ""
+        self.feedback_timer = 0.0
+        self.feedback_alpha = 0
 
-        # make sure we start with at least one poacher for visibility tests
-        self.control.spawn_poacher()
+    # ───────────────────────── public API ─────────────────────────
+    def update(self, dt: float) -> None:
+        # optional auto-follow (only if it is ON **and** we’re zoomed-in)
+        if (self.auto_follow
+                and self.board_gui.tile > self.full_tile
+                and self.control.board.jeeps):
+            self.board_gui.follow(self.control.board.jeeps[0].position)
 
-    # ───────────────────────────── public API ────────────────────────────────
-    def update(self, dt: float):
-        """Called every frame by your main loop."""
-        self._update_ui(dt)
+        # day/night tint
+        self.board_gui.update_day_night(dt)
+
+        # feedback fade
+        if self.feedback_timer > 0:
+            self.feedback_timer -= dt
+            self.feedback_alpha = int(255 * min(1.0, self.feedback_timer * 2))
+        else:
+            self.feedback_alpha = 0
+
+        # input + draw
         self._handle_events()
         self._draw()
 
@@ -85,49 +117,38 @@ class GameGUI:
         pygame.quit()
         sys.exit()
 
-    # ─────────────────────────────── helpers ────────────────────────────────
-    def _update_ui(self, dt: float):
-        if (not self.board_gui._dragging) and self.control.board.jeeps:
-            self.board_gui.follow(self.control.board.jeeps[0].position)
-        self.board_gui.update_day_night(dt)
-
-        if self.feedback_timer > 0:
-            self.feedback_timer -= dt
-            self.feedback_alpha = int(255 * min(1.0, self.feedback_timer * 2))
-        else:
-            self.feedback_alpha = 0
-            self.feedback       = ""
-
-    # ─────────────────────────── event handling ──────────────────────────────
+    # ───────────────────────── events ────────────────────────────
     def _handle_events(self):
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 self.control.running = False
 
+            # ── toggle follow with “F” ─────────────────────────────
+            elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_f:
+                self.auto_follow = not self.auto_follow
+
+            # ── mouse buttons ─────────────────────────────────────
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                # 1) Zoom buttons
-                if self.btn_zoom_in.collidepoint(ev.pos):
-                    self.board_gui.zoom(+1, Vector2(ev.pos), BOARD_RECT)
+                if   self.btn_zoom_in .collidepoint(ev.pos):
+                    self.board_gui.zoom(+1, ev.pos, BOARD_RECT)
                 elif self.btn_zoom_out.collidepoint(ev.pos):
-                    self.board_gui.zoom(-1, Vector2(ev.pos), BOARD_RECT)
-
+                    self.board_gui.zoom(-1, ev.pos, BOARD_RECT)
                 elif BOARD_RECT.collidepoint(ev.pos):
-                    self.board_gui.start_drag(Vector2(ev.pos))
-
+                    self.board_gui.start_drag(ev.pos)
                 else:
-                    for i, rect in enumerate(self.item_rects):
-                        if rect.collidepoint(ev.pos):
+                    for i, r in enumerate(self.item_rects):
+                        if r.collidepoint(ev.pos):
                             self._buy_item(i)
                             break
 
-            # Left mouse button up → stop dragging
             elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
-                self.board_gui.stop_drag()
+                if self.board_gui._dragging:
+                    self.board_gui.stop_drag()
+                    self.auto_follow = False   # user took manual control
 
             elif ev.type == pygame.MOUSEMOTION:
                 if self.board_gui._dragging:
-                    # continue panning
-                    self.board_gui.drag(Vector2(ev.pos), BOARD_RECT)
+                    self.board_gui.drag(ev.pos, BOARD_RECT)
                 else:
                     self.hover_item = next(
                         (i for i, r in enumerate(self.item_rects)
@@ -136,28 +157,30 @@ class GameGUI:
                     )
 
             elif ev.type == pygame.MOUSEWHEEL:
-                # ev.y == +1 (wheel up) or -1 (wheel down)
-                self.board_gui.zoom(ev.y, Vector2(pygame.mouse.get_pos()), BOARD_RECT)
+                self.board_gui.zoom(ev.y, pygame.mouse.get_pos(), BOARD_RECT)
+                # zoom counts as manual camera work
+                self.auto_follow = False
 
-    # ───────────────────────────── shop logic ───────────────────────────────
-    def _buy_item(self, index: int):
-        item = self.shop_items[index]
-        if self.control.capital.deductFunds(item["cost"]):
-            name = item["name"]
-            if   name == "Ranger":  self.control.spawn_ranger()
-            elif name == "Plant":   self.control.spawn_plant()
-            elif name == "Pond":    self.control.spawn_pond()
-            else:                   self.control.spawn_animal(name.upper())
-            self._show_feedback(f"Purchased {name} for ${item['cost']}")
-        else:
-            self._show_feedback("Insufficient funds!")
+    # ───────────────────────── shop helpers ──────────────────────
+    def _buy_item(self, idx: int):
+        item = self.shop_items[idx]
+        if not self.control.capital.deductFunds(item["cost"]):
+            return self._feedback("Insufficient funds!")
+        name = item["name"]
+        if   name == "Ranger":  self.control.spawn_ranger()
+        elif name == "Plant":   self.control.spawn_plant()
+        elif name == "Pond":    self.control.spawn_pond()
+        else:                   self.control.spawn_animal(name.upper())
+        self._feedback(f"Purchased {name} for ${item['cost']}")
 
-    def _show_feedback(self, msg: str):
-        self.feedback       = msg
-        self.feedback_timer = 2.0
-        self.feedback_alpha = 255
+    def _feedback(self, msg: str):
+        self.feedback, self.feedback_timer, self.feedback_alpha = msg, 2.0, 255
 
-    # ───────────────────────────── drawing ───────────────────────────────────
+    # ───────────────────────── drawing  (unchanged) ──────────────
+    #   … everything below is identical to the version you already have …
+
+
+    # ───────────────────────── drawing ──────────────────────────
     def _draw(self):
         self.screen.fill((40, 45, 50))
         self.board_gui.render(self.screen, BOARD_RECT)
@@ -167,6 +190,7 @@ class GameGUI:
         self._draw_feedback()
         self._draw_zoom_buttons()
         pygame.display.flip()
+
 
     # ---------------- top bar ------------------------------------------------
     def _draw_top_bar(self):
