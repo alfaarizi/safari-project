@@ -4,7 +4,7 @@ class Plant:
     def __init__(
         self,
         plantID: int,
-        location: tuple,
+        position: tuple,
         name: str,
         value: int,
         growthRate: float,
@@ -12,7 +12,7 @@ class Plant:
         isEatable: bool
     ):
         self.plantID: int = plantID
-        self.location: tuple = location  # (x, y)
+        self.position: tuple = position  # (x, y)
         self.name: str = name
         self.value: int = value
         self.growthRate: float = growthRate
@@ -45,7 +45,7 @@ class Plant:
         if self.isMature() and self.timeSinceLastReproduction >= self.reproductionCooldown:
             self.reproduce()
             self.timeSinceLastReproduction = 0.0
-    # it creates an offspring plant at a location offset from the parent 
+    # it creates an offspring plant at a position offset from the parent 
     def reproduce(self) -> None:
  
         if not self.isAlive:
@@ -54,7 +54,7 @@ class Plant:
         # Generate a small random offset so the offspring isn't in the same exact spot.
         offset_x = random.randint(-10, 10)
         offset_y = random.randint(-10, 10)
-        new_location = (self.location[0] + offset_x, self.location[1] + offset_y)
+        new_position = (self.position[0] + offset_x, self.position[1] + offset_y)
 
         # Generating distinct plantID.
         new_plant_id = self.plantID * 100 + random.randint(1, 99)
@@ -62,7 +62,7 @@ class Plant:
         # Create the offspring plant
         new_plant = Plant(
             plantID=new_plant_id,
-            location=new_location,
+            position=new_position,
             name=self.name,
             value=self.value,
             growthRate=self.growthRate,
@@ -71,7 +71,7 @@ class Plant:
         )
 
 
-        print(f"Plant {self.plantID} reproduced! Offspring {new_plant_id} created at {new_location}.")
+        print(f"Plant {self.plantID} reproduced! Offspring {new_plant_id} created at {new_position}.")
 
     def getEaten(self, amount: float) -> None:
 

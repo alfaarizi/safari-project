@@ -4,6 +4,7 @@ from pygame.math import Vector2
 from abc import ABC
 from typing import List, TypeVar, Generic, Union, Optional, TYPE_CHECKING
 from enum import Enum
+from pygame import Color
 
 if TYPE_CHECKING:
     from my_safari_project.model.plant import Plant
@@ -21,6 +22,20 @@ class AnimalSpecies(Enum):
     GIRAFFE = 5
     HIPPO = 6
     ZEBRA = 7
+
+    @property
+    def color(self) -> Color:
+        color_map = {
+            AnimalSpecies.HYENA: Color(200, 100, 50, 128),      # Brownish
+            AnimalSpecies.LION: Color(255, 215, 0, 128),        # Gold
+            AnimalSpecies.TIGER: Color(255, 140, 0, 128),       # Orange
+            AnimalSpecies.BUFFALO: Color(139, 69, 19, 128),     # Brown
+            AnimalSpecies.ELEPHANT: Color(128, 128, 128, 128),  # Gray
+            AnimalSpecies.GIRAFFE: Color(255, 255, 153, 128),   # Light yellow
+            AnimalSpecies.HIPPO: Color(180, 180, 230, 128),     # Light purple
+            AnimalSpecies.ZEBRA: Color(0, 0, 0, 128),           # Black
+        }
+        return color_map.get(self, Color(0, 100, 255, 128))     # Fallback color (blue)
 
 T = TypeVar('T', bound=Union["Plant", "Herbivore"])
 

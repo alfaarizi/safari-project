@@ -2,7 +2,7 @@ class Pond:
     def __init__(
         self,
         pondID: int,
-        location: tuple,
+        position: tuple,
         name: str,
         buildCost: int,
         retentionCost: int,
@@ -10,7 +10,7 @@ class Pond:
         evaporationRate: float
     ):
         self.pondID: int = pondID
-        self.location: tuple = location  # (x, y)
+        self.position: tuple = position  # (x, y)
         self.name: str = name
         self.buildCost: int = buildCost
         self.retentionCost: int = retentionCost

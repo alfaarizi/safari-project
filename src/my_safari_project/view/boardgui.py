@@ -178,7 +178,7 @@ class BoardGUI:
 
         # ponds
         for p in self.board.ponds:
-            x, y = p.location
+            x, y = p.position
             if not (min_x <= x < max_x and min_y <= y < max_y): continue
             px = ox + int((x - min_x)*side)
             py = oy + int((y - min_y)*side)
@@ -187,13 +187,15 @@ class BoardGUI:
         # plants
         gw, gh = side, int(side*1.2)
         for p in self.board.plants:
-            x, y = p.location
+            x, y = p.position
             if not (min_x <= x < max_x and min_y <= y < max_y): continue
             px = ox + int((x - min_x)*side)
             py = oy + int((y - min_y)*side - (gh-side))
             screen.blit(pygame.transform.scale(self.plant, (gw, gh)), (px, py))
         
         # ---------- animals -----------------------------
+        if getattr(self.board.wildlife_ai.animal_ai, "debug_mode"):
+            self.board.wildlife_ai.animal_ai.render(screen, ox, oy, side, min_x, min_y)
         aw, ah = side, side
         for animal in self.board.animals:
             loc = getattr(animal, "position", Vector2(0,0))
