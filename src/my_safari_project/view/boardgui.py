@@ -175,7 +175,11 @@ class BoardGUI:
             px = ox + int((r.pos.x - min_x)*side)
             py = oy + int((r.pos.y - min_y)*side)
             pygame.draw.rect(screen, road_col, (px, py, side, side))
-
+        
+        # Animal AI collision/detection
+        if getattr(self.board.wildlife_ai.animal_ai, "debug_mode"):
+            self.board.wildlife_ai.animal_ai.render(screen, ox, oy, side, min_x, min_y)
+            
         # ponds
         for p in self.board.ponds:
             x, y = p.position
@@ -194,8 +198,6 @@ class BoardGUI:
             screen.blit(pygame.transform.scale(self.plant, (gw, gh)), (px, py))
         
         # ---------- animals -----------------------------
-        if getattr(self.board.wildlife_ai.animal_ai, "debug_mode"):
-            self.board.wildlife_ai.animal_ai.render(screen, ox, oy, side, min_x, min_y)
         aw, ah = side, side
         for animal in self.board.animals:
             loc = getattr(animal, "position", Vector2(0,0))
