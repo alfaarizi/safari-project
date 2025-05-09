@@ -13,6 +13,8 @@ from my_safari_project.model.road  import Road
 
 class BoardGUI:
     """Draws a *scroll‐ and zoom‐able* viewport of a Board instance."""
+    MIN_TILE = 4
+    MAX_TILE = 64
 
     def __init__(self, board: Board, default_tile: int = 32):
         self.board = board
@@ -20,12 +22,10 @@ class BoardGUI:
 
         # Force minimum tile size to show entire board
         self.tile = min(
-            BOARD_RECT.width // self.board.width,
-            BOARD_RECT.height // self.board.height
-        )
+                        BOARD_RECT.width // self.board.width,
+                        BOARD_RECT.height // self.board.height)
 
-        # Ensure the tile size is at least 4 pixels
-        self.tile = max(4, self.tile)
+        self.tile = max(self.MIN_TILE, self.tile)
 
         # Position camera to show entire board
         self.cam = Vector2(
@@ -116,7 +116,7 @@ class BoardGUI:
         if not board_rect.collidepoint(mouse_pos):
             return
         old_tile = self.tile
-        self.tile  = max(4, min(64, self.tile + direction * 4))
+        self.tile = max(self.MIN_TILE,   min(self.tile + direction * 4, self.MAX_TILE))
         if self.tile == old_tile:
             return
 

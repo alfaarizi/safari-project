@@ -52,18 +52,11 @@ class GameGUI:
         self.control = controller
         self.board_gui = BoardGUI(controller.board)
 
-
-        # Calculate initial zoom to fit the entire board in the viewport
-        self.board_gui.tile = min(
-            BOARD_RECT.width // controller.board.width,
-            BOARD_RECT.height // controller.board.height
-        )
-
-        # Center the camera on the board
+        self.board_gui.tile = self.board_gui.MIN_TILE
         self.board_gui.cam = Vector2(
-            (controller.board.width - 1) / 2,
-            (controller.board.height - 1) / 2
-        )
+                (controller.board.width - 1) / 2,
+                (controller.board.height - 1) / 2)
+        self.full_tile = self.board_gui.tile
 
         # Set viewport boundaries
         self.board_gui.min_x = 0
