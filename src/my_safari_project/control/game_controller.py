@@ -169,7 +169,6 @@ class GameController:
         self.board.plants.append(Plant(
             pid,
             self._random_tile(),
-            "Bush", 20, 0.0, 1, True
         ))
 
     def spawn_pond(self):
@@ -178,7 +177,6 @@ class GameController:
         self.board.ponds.append(Pond(
             pid,
             self._random_tile(),
-            "Pond", 0, 0, 0, 0
         ))
     
     def spawn_animal(self, species_name):
