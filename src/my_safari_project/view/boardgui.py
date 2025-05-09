@@ -16,26 +16,38 @@ class BoardGUI:
 
     def __init__(self, board: Board, default_tile: int = 32):
         self.board = board
-        self.tile  = default_tile        # pixels per tile
+        from my_safari_project.view.gamegui import BOARD_RECT, SCREEN_W, SCREEN_H
 
-        # --- camera centre (world‐coordinate of tile centre) ------------
-        if hasattr(board, "entrance"):
-            start = board.entrance
-        elif hasattr(board, "entrances") and board.entrances:
-            start = board.entrances[0]
-        else:
-            start = (0, 0)
-        self.cam = Vector2(start) + Vector2(0.5, 0.5)
+        # Force minimum tile size to show entire board
+        self.tile = min(
+            BOARD_RECT.width // self.board.width,
+            BOARD_RECT.height // self.board.height
+        )
+
+        # Ensure the tile size is at least 4 pixels
+        self.tile = max(4, self.tile)
+
+        # Position camera to show entire board
+        self.cam = Vector2(
+            (board.width - 1) / 2,  # Center X
+            (board.height - 1) / 2  # Center Y
+        )
+
+        # Set viewport boundaries
+        self.min_x = 0
+        self.max_x = board.width - 1
+        self.min_y = 0
+        self.max_y = board.height - 1
 
         # --- day/night ---------------------------------------------------
         self._dn_enabled = True
-        self._dn_timer   = 0.0
-        self._dn_period  = 8 * 60     # 8 min real‐time loop
-        self.dn_opacity  = 0.0
+        self._dn_timer = 0.0
+        self._dn_period = 8 * 60
+        self.dn_opacity = 0.0
 
         # --- dragging state ---------------------------------------------
-        self._dragging    = False
-        self._drag_start  = Vector2(0, 0)
+        self._dragging = False
+        self._drag_start = Vector2(0, 0)
         self._cam_at_drag = Vector2(self.cam)
 
         # --- load all images --------------------------------------------
@@ -75,14 +87,23 @@ class BoardGUI:
         self._drag_start  = Vector2(mouse_pos)
         self._cam_at_drag = Vector2(self.cam)
 
-    def drag(self, mouse_pos: Vector2, board_rect: Rect):
-        """Continue panning; convert mouse‐delta into world units."""
+    def drag(self, pos: tuple[int, int], bounds: pygame.Rect) -> None:
+        """Handle drag movement, keeping within board boundaries."""
         if not self._dragging:
             return
-        delta_px   = Vector2(mouse_pos) - self._drag_start
-        world_delta = delta_px / self.tile
-        # Invert so dragging moves world in the same direction as cursor
-        self.cam = self._cam_at_drag - world_delta
+
+        offset = Vector2(pos) - self._drag_start
+        new_cam = self._cam_at_drag - offset / self.tile
+
+        # Clamp to board boundaries
+        board_width = self.board.width
+        board_height = self.board.height
+
+        # Allow half-tile margin on each side
+        new_cam.x = max(0.5, min(board_width - 0.5, new_cam.x))
+        new_cam.y = max(0.5, min(board_height - 0.5, new_cam.y))
+
+        self.cam = new_cam
 
     def stop_drag(self):
         """End panning without snapping back."""

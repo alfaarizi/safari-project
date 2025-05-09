@@ -1,3 +1,5 @@
+# my_safari_project/control/game_controller.py
+
 import random
 from enum import Enum
 from pygame.math import Vector2
@@ -92,18 +94,9 @@ class GameController:
         self.running = True
 
         # ─── VIEW ────────────────────────────────────────────────
-        from my_safari_project.view.gamegui import GameGUI, BOARD_RECT
+        # Note: all camera/zoom setup now lives in GameGUI, not here
+        from my_safari_project.view.gamegui import GameGUI
         self.game_gui = GameGUI(self)
-        bg = self.game_gui.board_gui
-
-        # zoom-out so the whole board fits …
-        fit = min(BOARD_RECT.width // self.board.width,
-                  BOARD_RECT.height // self.board.height)
-        bg.tile = max(4, fit)
-
-        # … and flush-left so roads start at x 0
-        cam_x = BOARD_RECT.width / (2 * bg.tile) - 0.5  # ★
-        bg.cam = Vector2(cam_x, self.board.height / 2)  # ★
 
         # ─── AI / helpers ────────────────────────────────────────
         self.wildlife_ai = WildlifeAI(self.board, self.capital)
@@ -148,25 +141,30 @@ class GameController:
 
     # ───────────────────────── Spawning Helpers ──────────────────────────
     def _random_tile(self):
-        return Vector2(random.randint(0, self.board.width - 1),
-                       random.randint(0, self.board.height - 1))
+        return Vector2(
+            random.randint(0, self.board.width - 1),
+            random.randint(0, self.board.height - 1)
+        )
 
     def spawn_ranger(self):
         rid = len(self.board.rangers) + 1
-        self.board.rangers.append(Ranger(rid, f"R{rid}", 50, self._random_tile()))
+        self.board.rangers.append(
+            Ranger(rid, f"R{rid}", 50, self._random_tile())
+        )
 
     def spawn_plant(self):
         from my_safari_project.model.plant import Plant
         pid = len(self.board.plants) + 1
-        self.board.plants.append(Plant(pid, self._random_tile(),
-                                       "Bush", 20, 0.0, 1, True))
+        self.board.plants.append(
+            Plant(pid, self._random_tile(), "Bush", 20, 0.0, 1, True)
+        )
 
     def spawn_pond(self):
         from my_safari_project.model.pond import Pond
         pid = len(self.board.ponds) + 1
-        self.board.ponds.append(Pond(pid, self._random_tile(),
-                                     "Pond", 0, 0, 0, 0))
-
+        self.board.ponds.append(
+            Pond(pid, self._random_tile(), "Pond", 0, 0, 0, 0)
+        )
 
     def spawn_animal(self, species_name: str):
         import random
@@ -186,34 +184,36 @@ class GameController:
         }
         species = getattr(AnimalSpecies, species_name.upper())
         cls, spd, val, life = props[species]
-        self.board.animals.append(cls(
-            animal_id=len(self.board.animals)+1,
-            species=species,
-            position=self._random_tile(),
-            speed=spd, value=val, age=0, lifespan=life
-        ))
+        self.board.animals.append(
+            cls(
+                animal_id  = len(self.board.animals) + 1,
+                species    = species,
+                position   = self._random_tile(),
+                speed      = spd,
+                value      = val,
+                age        = 0,
+                lifespan   = life
+            )
+        )
 
     def spawn_poacher(self):
-        pid = len(self.board.poachers)+1
+        pid = len(self.board.poachers) + 1
         p   = Poacher(pid, f"P{pid}", position=self._random_tile())
         p.choose_random_target(self.board.width, self.board.height)
         self.board.poachers.append(p)
 
-    # ───────────────────────── Game State Logic ──────────────────────────
+    # ─────────────────────── Game State Logic ─────────────────────────
     def start_game(self):
-        match self.game_state:
-            case None:
-                self.game_state = GameState.RUNNING
+        if not hasattr(self, "game_state"):
+            self.game_state = GameState.RUNNING
 
     def pause_game(self):
-        match self.game_state:
-            case GameState.RUNNING:
-                self.game_state = GameState.PAUSED
+        if getattr(self, "game_state", None) == GameState.RUNNING:
+            self.game_state = GameState.PAUSED
 
     def resume_game(self):
-        match self.game_state:
-            case GameState.PAUSED:
-                self.game_state = GameState.RUNNING
+        if getattr(self, "game_state", None) == GameState.PAUSED:
+            self.game_state = GameState.RUNNING
 
     def save_game(self, file_path: str):
         pass
@@ -228,18 +228,24 @@ class GameController:
         self.capital.updateMonthlyBudget()
         self.wildlife_ai.monthly_tick()
 
-        visitors   = len([j for j in self.board.jeeps
-                          if not j.is_available and j.current_passengers == 0])
-        herbivores = len([a for a in self.board.animals
-                          if a.__class__.__name__=="Herbivore" and a.is_alive()])
-        carnivores = len([a for a in self.board.animals
-                          if a.__class__.__name__=="Carnivore" and a.is_alive()])
+        visitors   = len([
+            j for j in self.board.jeeps
+            if not j.is_available and j.current_passengers == 0
+        ])
+        herbivores = len([
+            a for a in self.board.animals
+            if a.__class__.__name__ == "Herbivore" and a.is_alive()
+        ])
+        carnivores = len([
+            a for a in self.board.animals
+            if a.__class__.__name__ == "Carnivore" and a.is_alive()
+        ])
         capital    = self.capital.getBalance()
 
-        if (visitors >= self.visits_req and
-            herbivores >= self.herb_req and
-            carnivores >= self.carn_req and
-            capital >= self.cap_req):
+        if (visitors   >= self.visits_req and
+            herbivores >= self.herb_req    and
+            carnivores >= self.carn_req    and
+            capital    >= self.cap_req):
             self.consec_success += 1
         else:
             self.consec_success = 0

@@ -6,6 +6,7 @@ import pygame
 from pygame.math import Vector2
 from typing import List
 
+from my_safari_project.model.board import Board
 from my_safari_project.view.boardgui import BoardGUI
 from my_safari_project.control.game_controller import (
     GameController,
@@ -16,15 +17,19 @@ from my_safari_project.control.game_controller import (
 )
 
 # ───────────────────────── layout constants ─────────────────────────
-SCREEN_W, SCREEN_H = 1080, 720
-SIDE_PANEL_W       = 320
-TOP_BAR_H          = 60
-BOTTOM_BAR_H       = 80
+SCREEN_W = 1200  # Or whatever your screen width is
+SCREEN_H = 800   # Or whatever your screen height is
+
+# Define BOARD_RECT to use most of the screen space
+TOP_BAR_H = 50
+BOTTOM_BAR_H = 80
+SIDE_PANEL_W = 200
 
 BOARD_RECT = pygame.Rect(
-    0, TOP_BAR_H,
-    SCREEN_W - SIDE_PANEL_W,
-    SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H,
+    10,                         # Left margin
+    TOP_BAR_H + 10,            # Top margin
+    SCREEN_W - SIDE_PANEL_W - 20,  # Width (full width minus side panel and margins)
+    SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H - 20  # Height (remaining vertical space)
 )
 
 ZOOM_BTN_SZ = 32
@@ -44,50 +49,57 @@ class GameGUI:
         self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
         pygame.display.set_caption("Safari – prototype")
 
-        self.control    = controller
-        self.board_gui  = BoardGUI(controller.board)
+        self.control = controller
+        self.board_gui = BoardGUI(controller.board)
 
-        # ── start fully zoomed-out (whole board visible) ────────────────
-        fit = min(
-            BOARD_RECT.width  // controller.board.width,
-            BOARD_RECT.height // controller.board.height,
-        )
-        self.full_tile        = max(4, fit)
-        self.board_gui.tile   = self.full_tile
-        self.board_gui.cam    = Vector2(
-            controller.board.width  / 2,
-            controller.board.height / 2,
+
+        # Calculate initial zoom to fit the entire board in the viewport
+        self.board_gui.tile = min(
+            BOARD_RECT.width // controller.board.width,
+            BOARD_RECT.height // controller.board.height
         )
 
-        # auto-follow flag (can be toggled with “F”)
-        self.auto_follow = False    # ← off until the user decides
+        # Center the camera on the board
+        self.board_gui.cam = Vector2(
+            (controller.board.width - 1) / 2,
+            (controller.board.height - 1) / 2
+        )
 
-        # fonts
-        self.font_small  = pygame.font.SysFont("Verdana", 16)
+        # Set viewport boundaries
+        self.board_gui.min_x = 0
+        self.board_gui.max_x = controller.board.width - 1
+        self.board_gui.min_y = 0
+        self.board_gui.max_y = controller.board.height - 1
+
+        # Auto-follow flag (can be toggled with "F")
+        self.auto_follow = False
+
+        # Fonts
+        self.font_small = pygame.font.SysFont("Verdana", 16)
         self.font_medium = pygame.font.SysFont("Verdana", 20)
-        self.font_large  = pygame.font.SysFont("Verdana", 28, bold=True)
+        self.font_large = pygame.font.SysFont("Verdana", 28, bold=True)
 
-        # zoom buttons
-        self.btn_zoom_in  = pygame.Rect(0, 0, ZOOM_BTN_SZ, ZOOM_BTN_SZ)
+        # Zoom buttons
+        self.btn_zoom_in = pygame.Rect(0, 0, ZOOM_BTN_SZ, ZOOM_BTN_SZ)
         self.btn_zoom_out = pygame.Rect(0, 0, ZOOM_BTN_SZ, ZOOM_BTN_SZ)
 
-        # shop & feedback
+        # Shop & feedback
         self.shop_items: List[dict] = [
-            {"name": "Ranger",   "cost": RANGER_COST},
-            {"name": "Plant",    "cost": PLANT_COST},
-            {"name": "Pond",     "cost": POND_COST},
-            {"name": "Hyena",    "cost": HYENA_COST},
-            {"name": "Lion",     "cost": LION_COST},
-            {"name": "Tiger",    "cost": TIGER_COST},
-            {"name": "Buffalo",  "cost": BUFFALO_COST},
+            {"name": "Ranger", "cost": RANGER_COST},
+            {"name": "Plant", "cost": PLANT_COST},
+            {"name": "Pond", "cost": POND_COST},
+            {"name": "Hyena", "cost": HYENA_COST},
+            {"name": "Lion", "cost": LION_COST},
+            {"name": "Tiger", "cost": TIGER_COST},
+            {"name": "Buffalo", "cost": BUFFALO_COST},
             {"name": "Elephant", "cost": ELEPHANT_COST},
-            {"name": "Giraffe",  "cost": GIRAFFE_COST},
-            {"name": "Hippo",    "cost": HIPPO_COST},
-            {"name": "Zebra",    "cost": ZEBRA_COST},
+            {"name": "Giraffe", "cost": GIRAFFE_COST},
+            {"name": "Hippo", "cost": HIPPO_COST},
+            {"name": "Zebra", "cost": ZEBRA_COST},
         ]
         self.item_rects: list[pygame.Rect] = []
-        self.hover_item     = -1
-        self.feedback       = ""
+        self.hover_item = -1
+        self.feedback = ""
         self.feedback_timer = 0.0
         self.feedback_alpha = 0
 
