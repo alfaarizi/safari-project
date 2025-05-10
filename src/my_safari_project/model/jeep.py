@@ -1,76 +1,78 @@
-# ─── Jeep ───────────────────────────────────────────────────────────────────
-from __future__ import annotations
-import math, time
+import math
 from typing import List
 from pygame.math import Vector2
 
 
-SAFE_RADIUS = .8          # tiles – how close is “too close”
-YIELD_TIME  = 1.0         # seconds to wait when yielding
-
-
 class Jeep:
-    """
-    Drives along a pre-computed list of tile-centres.
-    When the next waypoint is occupied by another jeep the
-    jeep will pause for YIELD_TIME seconds and then try again.
-    """
+    """Drives along a precomputed list of tile-centre waypoints and updates its heading."""
 
-    def __init__(self, jeep_id: int, start_pos: Vector2):
-        self.id          = jeep_id
-        self.position    = Vector2(start_pos)
-        self.speed       = 2.0          # tiles / second
-        self._path: List[Vector2] = []
-        self._idx        = 0
-        self.heading     = 0.0          # degrees
-        self._resume_at  = 0.0          # world-time until which we are yielding
+    def __init__(self, jeep_id: int, start_position: Vector2):
+        self.jeep_id = jeep_id
+        # world-space position (1.0 = one tile)
+        self.position: Vector2 = Vector2(start_position)
+        self.speed: float      = 2.0  # tiles per second
 
-    # ── public API ─────────────────────────────────────────────────────────
+        # path state
+        self.path: List[Vector2] = []
+        self._waypoint_index: int = 0
+        self.returning: bool      = False
+
+        # visual
+        self.heading: float      = 0.0  # degrees, 0 → east
+
+        # logic
+        self.is_available = True
+        self.current_passengers = 0
+
     def set_path(self, waypoints: List[Vector2]):
-        """Waypoints are in integer tile coordinates (no +0.5 yet)."""
-        self._path = [wp + Vector2(.5, .5) for wp in waypoints]
-        self._idx  = 0
-        if len(self._path) >= 2:
-            self._update_heading(self._path[1])
+        """
+        waypoints: list of integer tile coords (Vector2(x,y)) WITHOUT the 0.5 offset.
+        We'll apply the +0.5 here to centre on each tile.
+        """
+        # convert tile coords → world centres
+        self.path = [wp + Vector2(0.5, 0.5) for wp in waypoints]
+        self._waypoint_index = 0
+        self.is_available = True
 
-    def update(self, dt: float, now: float, other: list["Jeep"]):
-        """Move, but yield if the next tile is busy."""
-        if self._idx >= len(self._path):
-            return                                    # finished
+        # immediately face toward the first leg (if any)
+        if len(self.path) >= 2:
+            self._update_heading(self.path[1])
 
-        if now < self._resume_at:
-            return                                    # currently yielding
+    def update(self, dt: float):
+        """Move along the current path, updating position and heading."""
+        if not self.path or self._waypoint_index >= len(self.path):
+            # once done, mark jeep as available for new hires
+            self.is_available = True
+            return
 
-        tgt = self._path[self._idx]
-
-        # check for collision: is any other jeep *already* inside target tile?
-        for j in other:
-            if j is self: continue
-            if (j.position - tgt).length() < SAFE_RADIUS:
-                self._resume_at = now + YIELD_TIME    # pause then retry
-                return
-
-        # --- travel towards tgt ------------------------------------------------
-        delta = tgt - self.position
-        dist  = delta.length()
-        step  = self.speed * dt
+        target = self.path[self._waypoint_index]
+        delta  = target - self.position
+        dist   = delta.length()
+        step   = self.speed * dt
 
         if dist <= step:
-            self.position = Vector2(tgt)
-            self._idx    += 1
-            if self._idx < len(self._path):
-                self._update_heading(self._path[self._idx])
+            self.position = Vector2(target)
+            self._waypoint_index += 1
+
+            if self._waypoint_index < len(self.path):
+                self._update_heading(self.path[self._waypoint_index])
         else:
             self.position += delta.normalize() * step
-            self._update_heading(tgt)
+            self._update_heading(target)
 
-    # ── helpers ────────────────────────────────────────────────────────────
     def _update_heading(self, look_at: Vector2):
+        """Rotate to face the provided world-space point."""
         v = look_at - self.position
-        if v.length_squared() == 0: return
-        # negate y because pygame Y-axis is downward
-        self.heading = math.degrees(math.atan2(-v.y, v.x))
+        if v.length_squared() == 0:
+            return
+        # math.atan2 takes (y, x); negate y because pygame’s y-axis is flipped
+        angle_rad = math.atan2(-v.y, v.x)
+        self.heading = math.degrees(angle_rad)
 
-    # ── debug ──────────────────────────────────────────────────────────────
     def __repr__(self):
-        return f"<Jeep #{self.id} {self.position} hdg={self.heading:.1f}°>"
+        return (
+            f"<Jeep #{self.jeep_id} "
+            f"pos=({self.position.x:.2f},{self.position.y:.2f}) "
+            f"wp={self._waypoint_index}/{len(self.path)} "
+            f"hdg={self.heading:.1f}°>"
+        )
