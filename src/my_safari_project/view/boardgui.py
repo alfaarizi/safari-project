@@ -1,5 +1,6 @@
 # my_safari_project/view/boardgui.py
 from __future__ import annotations
+
 import os
 import pygame
 from pygame import Surface, Rect
@@ -9,63 +10,83 @@ from typing import Tuple
 from my_safari_project.model.board import Board
 from my_safari_project.model.road  import Road
 
+
 class BoardGUI:
-    """Renders a portion of the Board, with support for zoom and drag."""
+    """Draws a *scroll‐ and zoom‐able* viewport of a Board instance."""
+    MIN_TILE = 4
+    MAX_TILE = 64
 
     def __init__(self, board: Board, default_tile: int = 32):
         self.board = board
-        self.tile  = default_tile           # pixel size of one cell
+        from my_safari_project.view.gamegui import BOARD_RECT, SCREEN_W, SCREEN_H
 
-        # camera centre (world‐coordinate of tile‐centre)
-        self.cam = Vector2(board.entrance) + Vector2(0.5, 0.5)
+        # Force minimum tile size to show entire board
+        self.tile = min(
+                        BOARD_RECT.width // self.board.width,
+                        BOARD_RECT.height // self.board.height)
 
-        # load assets
-        self._load_assets()
+        self.tile = max(self.MIN_TILE, self.tile)
 
-        # day/night
+        # Position camera to show entire board
+        self.cam = Vector2(
+            (board.width - 1) / 2,  # Center X
+            (board.height - 1) / 2  # Center Y
+        )
+
+        # Set viewport boundaries
+        self.min_x = 0
+        self.max_x = board.width - 1
+        self.min_y = 0
+        self.max_y = board.height - 1
+
+        # --- day/night ---------------------------------------------------
         self._dn_enabled = True
-        self._dn_timer   = 0.0
-        self._dn_period  = 8 * 60    # 8 min real‐time
-        self.dn_opacity  = 0.0
+        self._dn_timer = 0.0
+        self._dn_period = 8 * 60
+        self.dn_opacity = 0.0
 
-        # dragging state
-        self._dragging    = False
-        self._drag_start  = Vector2(0, 0)
+        # --- dragging state ---------------------------------------------
+        self._dragging = False
+        self._drag_start = Vector2(0, 0)
         self._cam_at_drag = Vector2(self.cam)
 
-    # ─── asset loading ──────────────────────────────────────────────────────
+        # --- load all images --------------------------------------------
+        self._load_assets()
+
+
+    # ─── asset loading ────────────────────────────────────────────────
     def _load_img(self, root: str, name: str, alpha=True) -> Surface:
         for ext in ("png", "jpg", "jpeg"):
-            path = os.path.join(root, f"{name}.{ext}")
-            if os.path.exists(path):
-                img = pygame.image.load(path)
+            p = os.path.join(root, f"{name}.{ext}")
+            if os.path.exists(p):
+                img = pygame.image.load(p)
                 return img.convert_alpha() if alpha else img.convert()
-        surf = pygame.Surface((1, 1),
+        surf = pygame.Surface((1,1),
                               pygame.SRCALPHA if alpha else 0)
         surf.fill((200,200,200,180) if alpha else (200,200,200))
         return surf
 
     def _load_assets(self):
-        base = os.path.dirname(__file__)
-        imgs = os.path.join(base, "images")
-        self.desert  = self._load_img(imgs, "desert", alpha=False)
-        self.plant   = self._load_img(imgs, "plant")
-        self.pond    = self._load_img(imgs, "pond")
-        self.jeep    = self._load_img(imgs, "jeep")
-        self.ranger  = self._load_img(imgs, "ranger")
-        self.poacher = self._load_img(imgs, "poacher")
+        root = os.path.join(os.path.dirname(__file__), "images")
+        self.desert  = self._load_img(root, "desert",  alpha=False)
+        self.plant   = self._load_img(root, "plant")
+        self.pond    = self._load_img(root, "pond")
+        self.jeep    = self._load_img(root, "jeep")
+        self.ranger  = self._load_img(root, "ranger")
+        self.poacher = self._load_img(root, "poacher")
         self.animals = [
-            self._load_img(imgs, "carnivores/hyena"),
-            self._load_img(imgs, "carnivores/lion"),
-            self._load_img(imgs, "carnivores/tiger"),
-            self._load_img(imgs, "herbivores/buffalo"),
-            self._load_img(imgs, "herbivores/elephant"),
-            self._load_img(imgs, "herbivores/giraffe"),
-            self._load_img(imgs, "herbivores/hippo"),
-            self._load_img(imgs, "herbivores/zebra")
+            self._load_img(root, "carnivores/hyena"),
+            self._load_img(root, "carnivores/lion"),
+            self._load_img(root, "carnivores/tiger"),
+            self._load_img(root, "herbivores/buffalo"),
+            self._load_img(root, "herbivores/elephant"),
+            self._load_img(root, "herbivores/giraffe"),
+            self._load_img(root, "herbivores/hippo"),
+            self._load_img(root, "herbivores/zebra")
         ]
 
-    # ─── camera controls (panning & zooming) ────────────────────────────────
+
+    # ─── camera controls (panning & zooming) ──────────────────────────
     def follow(self, world_pos: Vector2):
         """Centre the camera on the given world‐coordinate."""
         self.cam = Vector2(world_pos)
@@ -76,126 +97,136 @@ class BoardGUI:
         self._drag_start  = Vector2(mouse_pos)
         self._cam_at_drag = Vector2(self.cam)
 
-    def drag(self, mouse_pos: Vector2, board_rect: Rect):
-        """Continue panning; convert mouse‐delta into world‐units."""
+    def drag(self, pos: tuple[int, int], bounds: pygame.Rect) -> None:
+        """Handle drag movement, keeping within board boundaries."""
         if not self._dragging:
             return
-        delta_px = Vector2(mouse_pos) - self._drag_start
-        # each pixel = 1/tile world‐unit
-        world_delta = delta_px / self.tile
-        # invert so dragging moves world in same direction as cursor
-        self.cam = self._cam_at_drag - world_delta
+
+        offset = Vector2(pos) - self._drag_start
+        new_cam = self._cam_at_drag - offset / self.tile
+
+        # Clamp to board boundaries
+        board_width = self.board.width
+        board_height = self.board.height
+
+        # Allow half-tile margin on each side
+        new_cam.x = max(0.5, min(board_width - 0.5, new_cam.x))
+        new_cam.y = max(0.5, min(board_height - 0.5, new_cam.y))
+
+        self.cam = new_cam
 
     def stop_drag(self):
-        """End panning."""
+        """End panning without snapping back."""
         self._dragging = False
 
     def zoom(self, direction: int, mouse_pos: Vector2, board_rect: Rect):
         """
-        Zoom in (+1) or out (–1).  Zooms relative to mouse_pos.
+        Zoom in (+1) or out (–1), keeping the tile under the cursor fixed.
         """
-        old_tile = self.tile
-        # adjust tile size
-        self.tile = max(4, min(64, self.tile + direction * 4))
-        # to keep the point under the cursor stationary, adjust cam:
-        mx, my = mouse_pos
         if not board_rect.collidepoint(mouse_pos):
             return
+        old_tile = self.tile
+        self.tile = max(self.MIN_TILE,   min(self.tile + direction * 4, self.MAX_TILE))
+        if self.tile == old_tile:
+            return
 
-        # compute world‐coords under mouse before and after zoom:
-        cols = board_rect.width  // old_tile
-        rows = board_rect.height // old_tile
-        half_w = cols/2; half_h = rows/2
+        mx, my = mouse_pos
 
-        # world‐pos of mouse under old zoom:
-        wx_old = self.cam.x + (mx - board_rect.centerx) / old_tile
-        wy_old = self.cam.y + (my - board_rect.centery) / old_tile
-        # same under new zoom:
-        wx_new = self.cam.x + (mx - board_rect.centerx) / self.tile
-        wy_new = self.cam.y + (my - board_rect.centery) / self.tile
+        def world_at(px_per_tile: int) -> Vector2:
+            return Vector2(
+                self.cam.x + (mx - board_rect.centerx) / px_per_tile,
+                self.cam.y + (my - board_rect.centery) / px_per_tile
+            )
 
-        # shift cam so the world‐point stays fixed:
-        self.cam.x += wx_old - wx_new
-        self.cam.y += wy_old - wy_new
+        w_old = world_at(old_tile)
+        w_new = world_at(self.tile)
+        # shift cam so that point stays put
+        self.cam += w_old - w_new
 
-    # ─── day/night ─────────────────────────────────────────────────────────
+
+    # ─── day / night tinting ──────────────────────────────────────────
     def update_day_night(self, dt: float):
         if not self._dn_enabled:
             return
         self._dn_timer = (self._dn_timer + dt) % self._dn_period
         t = self._dn_timer
-        if   t < 270:            self.dn_opacity = 0.0
-        elif t < 300:            self.dn_opacity = (t-270)/30
-        elif t < 450:            self.dn_opacity = 1.0
-        else:                    self.dn_opacity = 1 - ((t-450)/30)
+        if   t < 270:   self.dn_opacity = 0.0
+        elif t < 300:   self.dn_opacity = (t - 270) / 30
+        elif t < 450:   self.dn_opacity = 1.0
+        else:           self.dn_opacity = 1.0 - ((t - 450) / 30)
 
-    # ─── rendering ─────────────────────────────────────────────────────────
+
+    # ─── rendering ─────────────────────────────────────────────────────
     @staticmethod
     def _lerp(c1: Tuple[int,int,int,int],
               c2: Tuple[int,int,int,int], t: float) -> Tuple[int,int,int,int]:
-        return tuple(int(a + (b-a)*t) for a,b in zip(c1, c2))
+        return tuple(int(a + (b - a)*t) for a,b in zip(c1, c2))
 
     def render(self, screen: Surface, rect: Rect):
         if self.board.width == 0 or self.board.height == 0:
             return
 
-        # keep tile size within reasonable bounds to fit the viewport
-        cols = max(1, rect.width  // self.tile)
-        rows = max(1, rect.height // self.tile)
+        # ensure at least 4×4 tiles fit in the view
         self.tile = max(4, min(self.tile,
-                              rect.width  // cols,
-                              rect.height // rows))
+                               rect.width  // 4,
+                               rect.height // 4))
         side = self.tile
 
-        # how many tiles to each side of the camera
-        half_w = rect.width  // (2*side)
-        half_h = rect.height // (2*side)
+        # how many tiles in each direction from camera
+        half_w = rect.width  // (2 * side)
+        half_h = rect.height // (2 * side)
 
-        # world‐bounds shown
+        # world‐bounds
         min_x = int(self.cam.x) - half_w - 1
         min_y = int(self.cam.y) - half_h - 1
         max_x = int(self.cam.x) + half_w + 2
         max_y = int(self.cam.y) + half_h + 2
 
-        # origin pixel for (min_x,min_y)
-        ox = rect.x + rect.width//2  - int((self.cam.x - min_x)*side)
-        oy = rect.y + rect.height//2 - int((self.cam.y - min_y)*side)
+        # pixel offset for (min_x, min_y)
+        ox = rect.centerx - int((self.cam.x - min_x) * side)
+        oy = rect.centery - int((self.cam.y - min_y) * side)
 
-        # background desert
         vis_w = max_x - min_x
         vis_h = max_y - min_y
-        bg = pygame.transform.scale(self.desert, (vis_w*side, vis_h*side))
+
+        # ---------- background desert ----------------------------
+        bg = pygame.transform.scale(self.desert, (vis_w * side, vis_h * side))
         screen.blit(bg, (ox, oy))
 
-        # roads
-        road_col, th = (105,105,105), side
-        for r in self.board.roads:
-            if not (min_x <= r.pos.x < max_x and min_y <= r.pos.y < max_y):
-                continue
-            px = ox + int((r.pos.x - min_x)*side)
-            py = oy + int((r.pos.y - min_y)*side)
-            pygame.draw.rect(screen, road_col, (px, py, side, side))
+        # ---------- roads ------------------------------------------
+        road_col = (105, 105, 105)
+        for rd in self.board.roads:  # type: Road
+            if min_x <= rd.pos.x < max_x and min_y <= rd.pos.y < max_y:
+                px = ox + int((rd.pos.x - min_x) * side)
+                py = oy + int((rd.pos.y - min_y) * side)
+                pygame.draw.rect(screen, road_col, (px, py, side, side))
         
         # Animal AI collision/detection
         if getattr(self.board.wildlife_ai.animal_ai, "debug_mode"):
             self.board.wildlife_ai.animal_ai.render(screen, ox, oy, side, min_x, min_y)
-            
-        # ponds
+
+        # ---------- ponds ------------------------------------------
         for p in self.board.ponds:
             x, y = p.position
-            if not (min_x <= x < max_x and min_y <= y < max_y): continue
-            px = ox + int((x - min_x)*side)
-            py = oy + int((y - min_y)*side)
-            screen.blit(pygame.transform.scale(self.pond, (side, side)), (px, py))
+            if min_x <= x < max_x and min_y <= y < max_y:
+                px = ox + int((x - min_x) * side)
+                py = oy + int((y - min_y) * side)
+                screen.blit(
+                    pygame.transform.scale(self.pond, (side, side)),
+                    (px, py)
+                )
 
-        # plants
-        gw, gh = side, int(side*1.2)
+        # ---------- plants -----------------------------------------
+        gw, gh = side, int(side * 1.2)
         for p in self.board.plants:
             x, y = p.position
-            if not (min_x <= x < max_x and min_y <= y < max_y): continue
-            px = ox + int((x - min_x)*side)
-            py = oy + int((y - min_y)*side - (gh-side))
-            screen.blit(pygame.transform.scale(self.plant, (gw, gh)), (px, py))
+            if min_x <= x < max_x and min_y <= y < max_y:
+                px = ox + int((x - min_x) * side)
+                py = oy + int((y - min_y) * side - (gh - side))
+                screen.blit(
+                    pygame.transform.scale(self.plant, (gw, gh)),
+                    (px, py)
+                )
         
         # ---------- animals -----------------------------
         aw, ah = side, side
@@ -205,52 +236,53 @@ class BoardGUI:
             py = oy + int((loc.y - min_y) * side)
             screen.blit(pygame.transform.scale(self.animals[animal.species.value], (aw, ah)), (px, py))
 
-        # ---------- jeeps (2×2) --------------------------------
+        # ---------- jeeps (2×2) ------------------------------------
         jw = jh = side * 2
         for j in self.board.jeeps:
             cx, cy = j.position
-            if not (min_x - 2 <= cx < max_x + 2 and min_y - 2 <= cy < max_y + 2):
-                continue
+            if (min_x - 2) <= cx < (max_x + 2) and (min_y - 2) <= cy < (max_y + 2):
+                # rotate & scale
+                img = pygame.transform.scale(self.jeep, (jw, jh))
+                # pygame.rotate is CCW; our heading is +° CCW
+                img = pygame.transform.rotate(img, -j.heading)
+                r = img.get_rect(center=(0,0))
+                px = ox + int((cx - min_x)*side - r.width / 2)
+                py = oy + int((cy - min_y)*side - r.height / 2)
+                screen.blit(img, (px, py))
 
-            px = ox + int((cx - min_x) * side)
-            py = oy + int((cy - min_y) * side)
-
-            angle = getattr(j, "heading", 0.0)
-
-            rotated = pygame.transform.rotate(self.jeep,  angle)
-            scaled = pygame.transform.scale(rotated, (jw, jh))
-
-            rect = scaled.get_rect(center=(px, py))
-            screen.blit(scaled, rect.topleft)
-
-        # rangers
+        # ---------- rangers ----------------------------------------
         for r in self.board.rangers:
             rx, ry = r.position
-            if not (min_x <= rx < max_x and min_y <= ry < max_y):
-                continue
-            px = ox + int((rx - min_x)*side)
-            py = oy + int((ry - min_y)*side)
-            screen.blit(pygame.transform.scale(self.ranger, (side, side)), (px, py))
+            if min_x <= rx < max_x and min_y <= ry < max_y:
+                px = ox + int((rx - min_x)*side)
+                py = oy + int((ry - min_y)*side)
+                screen.blit(
+                    pygame.transform.scale(self.ranger, (side, side)),
+                    (px, py)
+                )
 
-        # poachers (only visible if any ranger can see them)
+        # ---------- poachers (only if visible) ---------------------
         for p in self.board.poachers:
             if any(p.is_visible_to(r) for r in self.board.rangers):
                 px = ox + int((p.position.x - min_x)*side)
                 py = oy + int((p.position.y - min_y)*side)
-                screen.blit(pygame.transform.scale(self.poacher, (side, side)), (px, py))
+                screen.blit(
+                    pygame.transform.scale(self.poacher, (side, side)),
+                    (px, py)
+                )
 
-        # grid
-        grid_col = (80,80,80)
-        for c in range(vis_w+1):
-            x = ox + c*side
-            pygame.draw.line(screen, grid_col, (x,oy), (x,oy+vis_h*side), 1)
-        for r in range(vis_h+1):
-            y = oy + r*side
-            pygame.draw.line(screen, grid_col, (ox,y), (ox+vis_w*side,y), 1)
+        # ---------- grid -------------------------------------------
+        grid_col = (80, 80, 80)
+        for c in range(vis_w + 1):
+            x = ox + c * side
+            pygame.draw.line(screen, grid_col, (x, oy), (x, oy + vis_h * side), 1)
+        for r in range(vis_h + 1):
+            y = oy + r * side
+            pygame.draw.line(screen, grid_col, (ox, y), (ox + vis_w * side, y), 1)
 
-        # day/night tint
-        if self.dn_opacity > 0.0:
+        # ---------- day / night overlay ----------------------------
+        if self.dn_opacity > 0:
             tint = self._lerp((255,255,255,0), (0,0,70,160), self.dn_opacity)
-            ov   = pygame.Surface((vis_w*side, vis_h*side), pygame.SRCALPHA)
+            ov   = pygame.Surface((vis_w * side, vis_h * side), pygame.SRCALPHA)
             ov.fill(tint)
             screen.blit(ov, (ox, oy))
