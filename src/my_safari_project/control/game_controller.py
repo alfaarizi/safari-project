@@ -115,10 +115,11 @@ class GameController:
     def _update_sim(self, dt: float):
         now = self.timer.elapsed_seconds
 
-        # 1) advance jeeps (and their yield logic)
+        # 1) advance jeeps (and their yield logic) + Wildlife AI
         self.board.update(dt, now)
+        self.wildlife_ai.update(dt)
 
-        # 2) spawn & move poachers
+        # 2) spawn & move poachers, animals
         if len(self.board.poachers) < self._max_poachers:
             self._poacher_timer += dt
             if self._poacher_timer >= self._poacher_ivl:
@@ -127,6 +128,8 @@ class GameController:
 
         for p in self.board.poachers:
             p.update(dt, self.board)
+        for a in self.board.animals:
+            a.update(dt, self.board)
 
         # 3) rangers
         for r in self.board.rangers:
@@ -156,14 +159,14 @@ class GameController:
         from my_safari_project.model.plant import Plant
         pid = len(self.board.plants) + 1
         self.board.plants.append(
-            Plant(pid, self._random_tile(), "Bush", 20, 0.0, 1, True)
+            Plant(pid, self._random_tile())
         )
 
     def spawn_pond(self):
         from my_safari_project.model.pond import Pond
         pid = len(self.board.ponds) + 1
         self.board.ponds.append(
-            Pond(pid, self._random_tile(), "Pond", 0, 0, 0, 0)
+            Pond(pid, self._random_tile())
         )
 
     def spawn_animal(self, species_name: str):
@@ -191,7 +194,6 @@ class GameController:
                 position   = self._random_tile(),
                 speed      = spd,
                 value      = val,
-                age        = 0,
                 lifespan   = life
             )
         )
@@ -234,11 +236,11 @@ class GameController:
         ])
         herbivores = len([
             a for a in self.board.animals
-            if a.__class__.__name__ == "Herbivore" and a.is_alive()
+            if a.__class__.__name__ == "Herbivore" and a.is_alive
         ])
         carnivores = len([
             a for a in self.board.animals
-            if a.__class__.__name__ == "Carnivore" and a.is_alive()
+            if a.__class__.__name__ == "Carnivore" and a.is_alive
         ])
         capital    = self.capital.getBalance()
 
