@@ -41,7 +41,7 @@ T = TypeVar('T', bound=Union["Plant", "Herbivore"])
 
 HUNGER_RATE = 0.05
 THIRST_RATE = 0.08 
-AGE_RATE = 0.01
+AGE_RATE = 0.03
 # DEBUG
 # HUNGER_RATE = 0.01
 # THIRST_RATE = 0.01
