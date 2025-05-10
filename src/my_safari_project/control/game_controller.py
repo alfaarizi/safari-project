@@ -114,7 +114,7 @@ class GameController:
         if self.capital.checkBankruptcy():
             self.lost = True
             self.game_state = GameState.PAUSED
-        if not any(a for a in self.board.animals if a.is_alive()):
+        if not any(a for a in self.board.animals if a.is_alive):
             self.lost = True
             self.game_state = GameState.PAUSED
 
@@ -169,7 +169,6 @@ class GameController:
         self.board.plants.append(Plant(
             pid,
             self._random_tile(),
-            "Bush", 20, 0.0, 1, True
         ))
 
     def spawn_pond(self):
@@ -178,7 +177,6 @@ class GameController:
         self.board.ponds.append(Pond(
             pid,
             self._random_tile(),
-            "Pond", 0, 0, 0, 0
         ))
     
     def spawn_animal(self, species_name):
@@ -205,7 +203,6 @@ class GameController:
             position=self._random_tile(),
             speed=speed,
             value=value,
-            age=0,
             lifespan=lifespan
         ))
 
@@ -246,8 +243,8 @@ class GameController:
 
         # counting things to check win condition
         visitors   = len([j for j in self.board.jeeps if not j.is_available and j.current_passengers == 0])
-        herbivores = len([a for a in self.board.animals if a.__class__.__name__=="Herbivore" and a.is_alive()])
-        carnivores = len([a for a in self.board.animals if a.__class__.__name__=="Carnivore" and a.is_alive()])
+        herbivores = len([a for a in self.board.animals if a.__class__.__name__=="Herbivore" and a.is_alive])
+        carnivores = len([a for a in self.board.animals if a.__class__.__name__=="Carnivore" and a.is_alive])
         capital    = self.capital.getBalance()
 
         if (visitors >= self.visits_req and
