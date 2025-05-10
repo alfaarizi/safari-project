@@ -2,6 +2,7 @@ import pygame
 import sys
 import tkinter as tk
 from tkinter import filedialog
+import os
 
 
 from my_safari_project.control.game_controller import DifficultyLevel
@@ -9,10 +10,13 @@ from my_safari_project.control.game_controller import DifficultyLevel
 pygame.init()
 pygame.mixer.init()
 
+assests_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets")
+
+
 # Fonts
 font_main = pygame.font.SysFont("Comic Sans MS", 36)
 font_small = pygame.font.SysFont("Comic Sans MS", 28)
-safari_font = pygame.font.Font("assets/Anton.ttf", 82)
+safari_font = pygame.font.Font(assests_dir + "/Anton.ttf", 82)
 
 # Colors
 WHITE = (255, 255, 255)
@@ -41,8 +45,9 @@ pygame.display.set_caption("Safari Game Menu")
 clock = pygame.time.Clock()
 
 # Load background and music
-background = pygame.image.load("assets/background.jpg")
-pygame.mixer.music.load("assets/menu_music.mp3")
+
+background = pygame.image.load(assests_dir + "/background.jpg")
+pygame.mixer.music.load(assests_dir + "/audio/music/menu_music.mp3")
 pygame.mixer.music.set_volume(0.5)
 pygame.mixer.music.play(-1)
 
