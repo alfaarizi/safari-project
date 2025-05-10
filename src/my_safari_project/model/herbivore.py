@@ -9,13 +9,18 @@ if TYPE_CHECKING:
 class Herbivore(Animal["Plant"]):
     """Animal that consumes Plant"""
     def __init__(
-        self,
+        self, 
         animal_id: int,
         species: AnimalSpecies, 
         position: Vector2, 
         speed: float,
         value: int, 
-        age: int, 
         lifespan: int
     ):
-        super().__init__(animal_id, species, position, speed, value, age, lifespan)
+        super().__init__(animal_id, species, position, speed, value, lifespan)
+    
+    def consume(self, food: "Plant") -> bool:
+        if food.consume_from():
+            self.hunger = max(self.hunger - 5.0, 0.0)
+            return True
+        return False
