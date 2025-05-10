@@ -99,10 +99,13 @@ class GameController:
         self._poacher_timer = 0.0
         self._last_month_time = 0.0
 
+        #new timespeed
+        self.time_multiplier: float = 1.0 
+
     def run(self):
         while self.running:
-            raw_dt      = self.timer.tick() # tick() returns real‐dt and internally advances game‐time
-            dt          = min(raw_dt, 0.02) # clamp to avoid large jumps
+            dt = self.timer.tick(self.time_multiplier)  # scaled dt from Timer
+            dt = min(dt, 0.02 * max(self.time_multiplier, 1.0))
             self._update_sim(dt)
             self.game_gui.update(dt)
         self.game_gui.exit()

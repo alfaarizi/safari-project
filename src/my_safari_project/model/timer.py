@@ -17,9 +17,15 @@ class Timer:
         self.clock = pygame.time.Clock()
         self.elapsed_seconds = 0.0
     
-    def tick(self):
-        self.elapsed_seconds += self.clock.tick(60) / 1000.0
-        return self.elapsed_seconds
+    def tick(self, speed: float = 1.0) -> float:
+        """
+        Advance the in-game clock by real_dt * speed
+        Returns that *scaled* at so callers can step their logic.
+        """
+        real_dt = self.clock.tick(60) / 1000.0# seconds
+        dt = real_dt * speed
+        self.elapsed_seconds += dt
+        return dt
     
     def get_game_time(self):
         years, r    = divmod(self.elapsed_seconds, TIME_SCALE["year"])
