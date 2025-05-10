@@ -109,6 +109,11 @@ class GameGUI:
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 self.control.running = False
+            
+            elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_d:
+                    self.control.wildlife_ai.animal_ai.debug_mode = not self.control.wildlife_ai.animal_ai.debug_mode
+                    debug_status = "ON" if self.control.wildlife_ai.animal_ai.debug_mode else "OFF"
+                    self._show_feedback(f"Debug mode: {debug_status}")
 
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 # 1) Zoom buttons

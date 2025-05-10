@@ -54,6 +54,16 @@ class BoardGUI:
         self.jeep    = self._load_img(imgs, "jeep")
         self.ranger  = self._load_img(imgs, "ranger")
         self.poacher = self._load_img(imgs, "poacher")
+        self.animals = [
+            self._load_img(imgs, "carnivores/hyena"),
+            self._load_img(imgs, "carnivores/lion"),
+            self._load_img(imgs, "carnivores/tiger"),
+            self._load_img(imgs, "herbivores/buffalo"),
+            self._load_img(imgs, "herbivores/elephant"),
+            self._load_img(imgs, "herbivores/giraffe"),
+            self._load_img(imgs, "herbivores/hippo"),
+            self._load_img(imgs, "herbivores/zebra")
+        ]
 
     # ─── camera controls (panning & zooming) ────────────────────────────────
     def follow(self, world_pos: Vector2):
@@ -165,10 +175,14 @@ class BoardGUI:
             px = ox + int((r.pos.x - min_x)*side)
             py = oy + int((r.pos.y - min_y)*side)
             pygame.draw.rect(screen, road_col, (px, py, side, side))
-
+        
+        # Animal AI collision/detection
+        if getattr(self.board.wildlife_ai.animal_ai, "debug_mode"):
+            self.board.wildlife_ai.animal_ai.render(screen, ox, oy, side, min_x, min_y)
+            
         # ponds
         for p in self.board.ponds:
-            x, y = p.location
+            x, y = p.position
             if not (min_x <= x < max_x and min_y <= y < max_y): continue
             px = ox + int((x - min_x)*side)
             py = oy + int((y - min_y)*side)
@@ -177,11 +191,19 @@ class BoardGUI:
         # plants
         gw, gh = side, int(side*1.2)
         for p in self.board.plants:
-            x, y = p.location
+            x, y = p.position
             if not (min_x <= x < max_x and min_y <= y < max_y): continue
             px = ox + int((x - min_x)*side)
             py = oy + int((y - min_y)*side - (gh-side))
             screen.blit(pygame.transform.scale(self.plant, (gw, gh)), (px, py))
+        
+        # ---------- animals -----------------------------
+        aw, ah = side, side
+        for animal in self.board.animals:
+            loc = getattr(animal, "position", Vector2(0,0))
+            px = ox + int((loc.x - min_x) * side)
+            py = oy + int((loc.y - min_y) * side)
+            screen.blit(pygame.transform.scale(self.animals[animal.species.value], (aw, ah)), (px, py))
 
         # ---------- jeeps (2×2) --------------------------------
         jw = jh = side * 2
