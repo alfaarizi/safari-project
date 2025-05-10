@@ -1,59 +1,20 @@
 from pygame.math import Vector2
+
 class Pond:
     def __init__(
         self,
-        pondID: int,
-        location: Vector2,
-        name: str,
-        buildCost: int,
-        retentionCost: int,
-        capacity: float,
-        evaporationRate: float
+        pond_id: int,
+        position: Vector2,
     ):
-        self.pondID: int = pondID
-        self.location: Vector2 = Vector2(location)
-        self.name: str = name
-        self.buildCost: int = buildCost
-        self.retentionCost: int = retentionCost
-        self.capacity: float = capacity
-        self.currentLevelOfWater: float = capacity #setting it to capacity
-        self.evaporationRate: float = evaporationRate
-        self.isDepleted: bool = False
-
-    def refill(self, amount: float) -> None:
-  
-        if self.isDepleted:
-            self.isDepleted = False
-        self.currentLevelOfWater += amount
-        if self.currentLevelOfWater > self.capacity:
-            self.currentLevelOfWater = self.capacity
-
-    def evaporate(self) -> None:
-
-        self.currentLevelOfWater -= self.evaporationRate
-        if self.currentLevelOfWater < 0:
-            self.currentLevelOfWater = 0
-        if self.currentLevelOfWater == 0:
-            self.isDepleted = True
-
-    def supplyWater(self, amount: float) -> float:
+        self.pond_id: int = pond_id
+        self.position: Vector2 = position 
+        self.water_level: int = 5
     
-        if self.currentLevelOfWater <= 0:
-            self.isDepleted = True
-            return 0.0
+    @property
+    def is_empty(self) -> bool:
+        return self.water_level <= 0
 
-        if amount >= self.currentLevelOfWater:
-            supplied = self.currentLevelOfWater
-            self.currentLevelOfWater = 0
-            self.isDepleted = True
-            return supplied
-        else:
-            self.currentLevelOfWater -= amount
-            if self.currentLevelOfWater <= 0:
-                self.currentLevelOfWater = 0
-                self.isDepleted = True
-            return amount
-
-    def isEmpty(self) -> bool:
-
-        return self.currentLevelOfWater <= 0
+    def drink_from(self) -> bool:
+        if self.is_empty: return False
+        self.water_level -= 1
+        return True

@@ -198,8 +198,8 @@ class Board:
         tile = Vector2(int(tile.x), int(tile.y))
         return (
             self.is_road(tile)
-            or any(Vector2(int(p.location.x), int(p.location.y)) == tile for p in self.plants)
-            or any(Vector2(int(p.location.x), int(p.location.y)) == tile for p in self.ponds)
+            or any(Vector2(int(p.position.x), int(p.position.y)) == tile for p in self.plants)
+            or any(Vector2(int(p.position.x), int(p.position.y)) == tile for p in self.ponds)
             or any(Vector2(int(a.position.x), int(a.position.y)) == tile for a in self.animals)
             or any(Vector2(int(r.position.x), int(r.position.y)) == tile for r in self.rangers)
             or any(Vector2(int(po.position.x), int(po.position.y)) == tile for po in self.poachers)

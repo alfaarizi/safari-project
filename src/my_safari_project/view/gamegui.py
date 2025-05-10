@@ -145,9 +145,66 @@ class GameGUI:
     #             # ev.y == +1 (wheel up) or -1 (wheel down)
     #             self.board_gui.zoom(ev.y, Vector2(pygame.mouse.get_pos()), BOARD_RECT)
         for ev in pygame.event.get():
-    # ------- quit -------------------------------------------------
             if ev.type == pygame.QUIT:
                 self.control.running = False
+
+            elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_d:
+                self.control.wildlife_ai.animal_ai.debug_mode = not self.control.wildlife_ai.animal_ai.debug_mode
+                self._show_feedback(f"Debug mode: {'ON' if self.control.wildlife_ai.animal_ai.debug_mode else 'OFF'}")
+
+            elif ev.type == pygame.MOUSEBUTTONDOWN:
+                if ev.button == 1:  # Left click
+                    # Zoom buttons
+                    if self.btn_zoom_in.collidepoint(ev.pos):
+                        self.board_gui.zoom(+1, Vector2(ev.pos), BOARD_RECT)
+                    elif self.btn_zoom_out.collidepoint(ev.pos):
+                        self.board_gui.zoom(-1, Vector2(ev.pos), BOARD_RECT)
+                    # Start board panning
+                    elif BOARD_RECT.collidepoint(ev.pos): 
+                        self.board_gui.start_drag(Vector2(ev.pos))
+                    # Start dragging item from toolbar
+                    else:
+                        for i, r in enumerate(self.item_rects):
+                            if r.collidepoint(ev.pos):
+                                self.state = "DRAGGING"
+                                self.drag_item_idx = i
+                                self.drag_pos = ev.pos
+                                self.hover_tile = None
+                                self.hover_valid = False
+                                self.board_gui.start_drag(self.drag_item_idx)  # Optional visual support
+                                break
+                elif ev.button == 4 or ev.button == 5:  # Mouse wheel scroll
+                    zoom_dir = 1 if ev.button == 4 else -1
+                    self.board_gui.zoom(zoom_dir, Vector2(pygame.mouse.get_pos()), BOARD_RECT)
+
+            elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
+                if self.state == "DRAGGING" and self.drag_item_idx >= 0:
+                    if self.hover_tile is not None and self.hover_valid: self._place_item(self.drag_item_idx, self.hover_tile)
+                    else: self._show_feedback("Drag the item onto the board before releasing.")
+                    self.drag_item_idx = -1
+                    self.state = "IDLE"
+                    self.hover_tile = None
+                    self.hover_valid = False
+                self.board_gui.stop_drag()
+
+            elif ev.type == pygame.MOUSEMOTION:
+                self.drag_pos = ev.pos
+                if self.state == "DRAGGING" and self.drag_item_idx >= 0:
+                    tile = self.board_gui.screen_to_tile(ev.pos, BOARD_RECT)
+                    self.hover_tile = tile
+                    self.hover_valid = tile is not None and self.control.board.is_placeable(tile)
+                elif self.board_gui._dragging: self.board_gui.drag(Vector2(ev.pos), BOARD_RECT)
+                else: self.hover_item = next((i for i, r in enumerate(self.item_rects) if r.collidepoint(ev.pos)), -1)
+
+    # ------- quit -------------------------------------------------
+        for ev in pygame.event.get():
+            if ev.type == pygame.QUIT:
+                self.control.running = False
+            
+            elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_d:
+                    self.control.wildlife_ai.animal_ai.debug_mode = not self.control.wildlife_ai.animal_ai.debug_mode
+                    debug_status = "ON" if self.control.wildlife_ai.animal_ai.debug_mode else "OFF"
+                    self._show_feedback(f"Debug mode: {debug_status}")
 
             # ------- mouse down -------------------------------------------
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:

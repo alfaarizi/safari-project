@@ -114,7 +114,7 @@ class GameController:
         if self.capital.checkBankruptcy():
             self.lost = True
             self.game_state = GameState.PAUSED
-        if not any(a for a in self.board.animals if a.is_alive()):
+        if not any(a for a in self.board.animals if a.is_alive):
             self.lost = True
             self.game_state = GameState.PAUSED
 
@@ -153,7 +153,6 @@ class GameController:
             random.randint(0, self.board.height - 1)
         )
     
-    
     def spawn_ranger(self, tile: Vector2 | None = None):
         rid = len(self.board.rangers) + 1
         position = tile if tile else self._random_tile()
@@ -172,7 +171,6 @@ class GameController:
         self.board.plants.append(Plant(
             pid,
             position,
-            "Bush", 20, 0.0, 1, True
         ))
 
     def spawn_pond(self, tile: Vector2 | None = None):
@@ -182,15 +180,15 @@ class GameController:
         self.board.ponds.append(Pond(
             pid,
             position,
-            "Pond", 0, 0, 0, 0
         ))
-
+    
     def spawn_animal(self, species_name, tile: Vector2 | None = None):
+        import random
         from my_safari_project.model.animal import AnimalSpecies
         from my_safari_project.model.carnivore import Carnivore
         from my_safari_project.model.herbivore import Herbivore
-
         properties = {
+            # species: (class, speed, value, lifespan)
             AnimalSpecies.HYENA:    (Carnivore, 1.5, 60,  random.randint(5, 8)),
             AnimalSpecies.LION:     (Carnivore, 1.8, 150, random.randint(10, 15)),
             AnimalSpecies.TIGER:    (Carnivore, 2.0, 180, random.randint(8, 12)),
@@ -202,19 +200,15 @@ class GameController:
         }
         species = getattr(AnimalSpecies, species_name.upper())
         animal_class, speed, value, lifespan = properties[species]
-
         position = tile if tile else self._random_tile()
-
         self.board.animals.append(animal_class(
             animal_id=len(self.board.animals) + 1,
             species=species,
             position=position,
             speed=speed,
             value=value,
-            age=0,
             lifespan=lifespan
         ))
-
 
     def spawn_poacher(self):
         pid = len(self.board.poachers) + 1
@@ -253,8 +247,8 @@ class GameController:
 
         # counting things to check win condition
         visitors   = len([j for j in self.board.jeeps if not j.is_available and j.current_passengers == 0])
-        herbivores = len([a for a in self.board.animals if a.__class__.__name__=="Herbivore" and a.is_alive()])
-        carnivores = len([a for a in self.board.animals if a.__class__.__name__=="Carnivore" and a.is_alive()])
+        herbivores = len([a for a in self.board.animals if a.__class__.__name__=="Herbivore" and a.is_alive])
+        carnivores = len([a for a in self.board.animals if a.__class__.__name__=="Carnivore" and a.is_alive])
         capital    = self.capital.getBalance()
 
         if (visitors >= self.visits_req and
