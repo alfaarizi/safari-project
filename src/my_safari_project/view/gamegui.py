@@ -1,4 +1,3 @@
-# my_safari_project/view/gamegui.py
 from __future__ import annotations
 
 import sys
@@ -13,6 +12,13 @@ from my_safari_project.control.game_controller import (
     RANGER_COST, PLANT_COST, POND_COST,
     HYENA_COST, LION_COST, TIGER_COST,
     BUFFALO_COST, ELEPHANT_COST, GIRAFFE_COST, HIPPO_COST, ZEBRA_COST
+)
+# Import sound effects
+from my_safari_project.audio import (
+    play_button_click, play_purchase_success, play_insufficient_funds,
+    play_place_item, play_day_transition, play_money_received,
+    play_jeep_start, play_jeep_move, play_jeep_stop, play_jeep_crash,
+    play_animal_sound, play_footsteps, play_game_music
 )
 
 # ────────────────────────────── layout constants ──────────────────────────────
@@ -70,6 +76,10 @@ class GameGUI:
         ]
         self.item_rects: list[pygame.Rect] = []
         self.hover_item = -1
+        
+        # Audio
+        self.last_day = -1
+        play_game_music()
 
         # make sure we start with at least one poacher for visibility tests
         self.control.spawn_poacher()
@@ -80,6 +90,7 @@ class GameGUI:
         self._update_ui(dt)
         self._handle_events()
         self._draw()
+        self._check_day_transition()
 
     def exit(self):
         pygame.quit()
@@ -97,6 +108,18 @@ class GameGUI:
         else:
             self.feedback_alpha = 0
             self.feedback       = ""
+            
+    def _check_day_transition(self):
+        """Check if we've transitioned to a new day and play sound if so."""
+        current_day = self.control.timer.get_game_time()['days']
+        if self.last_day != -1 and current_day != self.last_day:
+            play_day_transition()
+            
+            # If this is a monthly transition, also play money received sound
+            if current_day % 30 == 0:
+                play_money_received()
+                
+        self.last_day = current_day
 
     # ─────────────────────────── event handling ──────────────────────────────
     def _handle_events(self):
@@ -108,13 +131,16 @@ class GameGUI:
                     self.control.wildlife_ai.animal_ai.debug_mode = not self.control.wildlife_ai.animal_ai.debug_mode
                     debug_status = "ON" if self.control.wildlife_ai.animal_ai.debug_mode else "OFF"
                     self._show_feedback(f"Debug mode: {debug_status}")
+                    play_button_click()
 
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 # 1) Zoom buttons
                 if self.btn_zoom_in.collidepoint(ev.pos):
                     self.board_gui.zoom(+1, Vector2(ev.pos), BOARD_RECT)
+                    play_button_click()
                 elif self.btn_zoom_out.collidepoint(ev.pos):
                     self.board_gui.zoom(-1, Vector2(ev.pos), BOARD_RECT)
+                    play_button_click()
 
                 elif BOARD_RECT.collidepoint(ev.pos):
                     self.board_gui.start_drag(Vector2(ev.pos))
@@ -122,6 +148,7 @@ class GameGUI:
                 else:
                     for i, rect in enumerate(self.item_rects):
                         if rect.collidepoint(ev.pos):
+                            play_button_click()
                             self._buy_item(i)
                             break
 
@@ -134,11 +161,16 @@ class GameGUI:
                     # continue panning
                     self.board_gui.drag(Vector2(ev.pos), BOARD_RECT)
                 else:
+                    prev_hover = self.hover_item
                     self.hover_item = next(
                         (i for i, r in enumerate(self.item_rects)
                          if r.collidepoint(ev.pos)),
                         -1
                     )
+                    # Play hover sound if hovering over a new item
+                    # (Uncomment if you have a hover sound)
+                    # if prev_hover != self.hover_item and self.hover_item != -1:
+                    #     play_hover_sound()
 
             elif ev.type == pygame.MOUSEWHEEL:
                 # ev.y == +1 (wheel up) or -1 (wheel down)
@@ -149,12 +181,25 @@ class GameGUI:
         item = self.shop_items[index]
         if self.control.capital.deductFunds(item["cost"]):
             name = item["name"]
-            if   name == "Ranger":  self.control.spawn_ranger()
-            elif name == "Plant":   self.control.spawn_plant()
-            elif name == "Pond":    self.control.spawn_pond()
-            else:                   self.control.spawn_animal(name.upper())
+            if name == "Ranger":
+                self.control.spawn_ranger()
+                play_place_item()
+            elif name == "Plant":
+                self.control.spawn_plant()
+                play_place_item()
+            elif name == "Pond":
+                self.control.spawn_pond()
+                play_place_item()
+            else:
+                self.control.spawn_animal(name.upper())
+                play_place_item()
+                # Play animal sound
+                play_animal_sound(name.lower())
+                
+            play_purchase_success()
             self._show_feedback(f"Purchased {name} for ${item['cost']}")
         else:
+            play_insufficient_funds()
             self._show_feedback("Insufficient funds!")
 
     def _show_feedback(self, msg: str):
