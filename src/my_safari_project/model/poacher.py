@@ -32,30 +32,32 @@ class Poacher:
         self._target: Vector2 | None = None
         self.captured = False
 
-        self._timer = 0.0  # counts up to 1s before picking new target
-        self._target = Vector2(position)  # current move‐toward point
-
-    def choose_random_target(self, width: int, height: int):
+    def choose_random_target(self, board_width: int, board_height: int) -> None:
+        """
+        Pick a new random wander target somewhere on the map.
+        """
         self._target = Vector2(
-            random.randint(0, width - 1),
-            random.randint(0, height - 1)
+            random.uniform(0, board_width),
+            random.uniform(0, board_height)
         )
 
-    def update(self, dt: float, board: "Board"):
-        # every 1s pick a new random tile
-        self._timer += dt
-        if self._timer >= 1.0:
-            self._timer = 0.0
+    # ------------------------------------------------------------- frame-update
+    def update(self, dt: float, board: "Board") -> None:
+        """
+        Wander toward a random target every frame.
+        `board` is supplied so we can query its current width/height.
+        """
+        if self.captured:
+            return  # already taken by a ranger
+
+        # pick a new wander target if none or reached
+        if (self._target is None or
+                self.position.distance_to(self._target) < 0.2):
             self.choose_random_target(board.width, board.height)
 
-        # move straight toward _target
-        direction = self._target - self.position
-        if direction.length_squared() > 0:
-            step = self.speed * dt
-            if direction.length() <= step:
-                self.position.update(self._target)
-            else:
-                self.position += direction.normalize() * step
+        # move toward that target
+        direction = (self._target - self.position).normalize()
+        self.position += direction * self.speed * dt
 
     def hunt_animal(self, animal: Animal) -> bool:
         """
