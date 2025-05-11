@@ -259,7 +259,7 @@ class GameGUI:
 
         self.item_rects.clear()
         top  = py + 50    # top of list
-        bottom  = SCREEN_H - BOTTOM_BAR_H - 90  # leaving space for the pause buttons
+        bottom  = SCREEN_H - BOTTOM_BAR_H - 60  # leaving space for the pause buttons
         scroll_limit  = max(0, (len(self.shop_items)*44) - (bottom-top))
 
         # clamp scroll offset
@@ -321,12 +321,18 @@ class GameGUI:
     # ───────────────────────── speed buttons ─────────────────────────────
     def _draw_speed_buttons(self):
         panel_x = SCREEN_W - SIDE_PANEL_W
-        y = SCREEN_H - BOTTOM_BAR_H - 60
-
         btn_w, btn_h, gap = 50, 32, 8
+        
+        #horizontal center inside side-panel
+        total_w = btn_w *4 + gap*3 
+        start_x = panel_x + (SIDE_PANEL_W - total_w)//2
+
+        #verticall center inside bottom-bar 
+        y = SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - btn_h)//2
+
         rects = []
         for i in range(4):
-            x = panel_x + 20 + i*(btn_w+gap)
+            x = start_x + i*(btn_w+gap)
             rects.append(pygame.Rect(x, y, btn_w, btn_h))
         self.btn_pause, self.btn_speed = rects[0], rects[1:]
 
@@ -343,25 +349,32 @@ class GameGUI:
             #pause button (index 0) 
             if i == 0:
                 #circular green button
-                radius = min(r.width, r.height) // 2 - 1
+                radius = min(r.width, r.height) // 2 - 2
                 centre = r.center
-                pygame.draw.circle(self.screen,
-                                   green_bg if not is_active else grey_bg,
-                                   centre, radius)
-                pygame.draw.circle(self.screen, white, centre, radius, 2)
+                paused = (self.control.time_multiplier == 0)
 
-                #the two pause bars
-                bar_w  = max(4, radius // 3)
-                bar_h  = int(radius * 1)
-                bar_gap = bar_w // 2
-                bar1 = pygame.Rect(centre[0] - bar_gap - bar_w,
-                                   centre[1] - bar_h//2,
-                                   bar_w, bar_h)
-                bar2 = pygame.Rect(centre[0] + bar_gap,
-                                   centre[1] - bar_h//2,
-                                   bar_w, bar_h)
-                pygame.draw.rect(self.screen, white, bar1, border_radius=3)
-                pygame.draw.rect(self.screen, white, bar2, border_radius=3)
+                # background
+                if paused:
+                    pygame.draw.circle(self.screen, green_bg, centre, radius)
+                    pygame.draw.circle(self.screen, white, centre, radius, 2)
+
+                if paused:
+                    # draw resume button ||
+                    bw = max(4, radius//3)
+                    bh = int(radius*1.0)
+                    gap = bw//2
+                    for dx in (-gap-bw//2, gap+bw//2):
+                        bar = pygame.Rect(centre[0]+dx-bw//2,
+                                          centre[1]-bh//2, bw, bh)
+                        pygame.draw.rect(self.screen, white, bar, border_radius=2)
+                else:
+                    # draw pause icon (|>)
+                    pts = [
+                        (centre[0]-radius//3, centre[1]-radius//2),
+                        (centre[0]-radius//3, centre[1]+radius//2),
+                        (centre[0]+radius//2, centre[1])
+                    ]
+                    pygame.draw.polygon(self.screen, white, pts)
 
             #3 different speed buttons (1×/2×/3×)
             else:
