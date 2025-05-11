@@ -1,4 +1,3 @@
-# my_safari_project/view/gamegui.py
 from __future__ import annotations
 
 import sys
@@ -14,32 +13,46 @@ from my_safari_project.control.game_controller import (
     HYENA_COST, LION_COST, TIGER_COST,
     BUFFALO_COST, ELEPHANT_COST, GIRAFFE_COST, HIPPO_COST, ZEBRA_COST
 )
+# Import sound effects
+from my_safari_project.audio import (
+    play_button_click, play_purchase_success, play_insufficient_funds,
+    play_place_item, play_day_transition, play_money_received,
+    play_jeep_start, play_jeep_move, play_jeep_stop, play_jeep_crash,
+    play_animal_sound, play_footsteps, play_game_music
+)
 
 # ────────────────────────────── layout constants ──────────────────────────────
-SCREEN_W, SCREEN_H = 1080, 720
-SIDE_PANEL_W       = 320
-TOP_BAR_H          = 60
+SCREEN_W, SCREEN_H = 1200, 800
+# Define BOARD_RECT to use most of the screen space
+SIDE_PANEL_W       = 200
+TOP_BAR_H          = 50
 BOTTOM_BAR_H       = 80
 
 BOARD_RECT = pygame.Rect(
-    0, TOP_BAR_H,
-    SCREEN_W - SIDE_PANEL_W,
-    SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H
+    10,                                         # Left margin
+    TOP_BAR_H + 10,                             # Top margin
+    SCREEN_W - SIDE_PANEL_W - 20,               # Width (full width minus side panel and margins)
+    SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H - 20    # Height (remaining vertical space)
 )
 
-ZOOM_BTN_SZ = 32        # size of the + / – buttons
+ZOOM_BTN_SZ = 32                                # size of the + / – buttons
 
 # ────────────────────────────────── GameGUI ───────────────────────────────────
 class GameGUI:
-    """UI layer.  Relies on an external GameController for model updates."""
+    """
+    Pure UI layer.
 
-    # ─────────────────────────────── lifecycle ────────────────────────────────
-    def __init__(self, control: GameController):
+    The only “smart” behaviour it keeps is an *optional* auto-follow of the
+    first jeep.  As soon as the player drags or pans, auto-follow is disabled
+    until they press the **F** key.
+    """
+
+    def __init__(self, controller: GameController):
         pygame.init()
         self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
         pygame.display.set_caption("Safari – prototype")
 
-        self.control: GameController = control
+        self.control: GameController = controller
         self.board_gui = BoardGUI(self.control.board)
 
         self.state          = "DRAGGING" 
@@ -76,9 +89,10 @@ class GameGUI:
         ]
         self.item_rects: list[pygame.Rect] = []
         self.hover_item = -1
-
-        # make sure we start with at least one poacher for visibility tests
-        self.control.spawn_poacher()
+        
+        # Audio
+        self.last_day = -1
+        play_game_music()
 
     # ───────────────────────────── public API ────────────────────────────────
     def update(self, dt: float):
@@ -86,6 +100,7 @@ class GameGUI:
         self._update_ui(dt)
         self._handle_events()
         self._draw()
+        self._check_day_transition()
 
     def exit(self):
         pygame.quit()
@@ -93,16 +108,34 @@ class GameGUI:
 
     # ─────────────────────────────── helpers ────────────────────────────────
     def _update_ui(self, dt: float):
-        if (not self.board_gui._dragging) and self.control.board.jeeps:
+        # optional auto-follow (only if it is ON **and** we’re zoomed-in)
+        if (self.auto_follow
+                and self.board_gui.tile > self.full_tile
+                and self.control.board.jeeps):
             self.board_gui.follow(self.control.board.jeeps[0].position)
+
+        # day/night tint
         self.board_gui.update_day_night(dt)
 
+        # feedback fade
         if self.feedback_timer > 0:
             self.feedback_timer -= dt
             self.feedback_alpha = int(255 * min(1.0, self.feedback_timer * 2))
         else:
             self.feedback_alpha = 0
-            self.feedback       = ""
+
+            
+    def _check_day_transition(self):
+        """Check if we've transitioned to a new day and play sound if so."""
+        current_day = self.control.timer.get_game_time()['days']
+        if self.last_day != -1 and current_day != self.last_day:
+            play_day_transition()
+            
+            # If this is a monthly transition, also play money received sound
+            if current_day % 30 == 0:
+                play_money_received()
+                
+        self.last_day = current_day
 
     # ─────────────────────────── event handling ──────────────────────────────
     def _handle_events(self):
@@ -283,18 +316,30 @@ class GameGUI:
         item = self.shop_items[index]
         if self.control.capital.deductFunds(item["cost"]):
             name = item["name"]
-            if   name == "Ranger":  self.control.spawn_ranger()
-            elif name == "Plant":   self.control.spawn_plant()
-            elif name == "Pond":    self.control.spawn_pond()
-            else:                   self.control.spawn_animal(name.upper())
-            self._show_feedback(f"Purchased {name} for ${item['cost']}")
+            if name == "Ranger":
+                self.control.spawn_ranger()
+                play_place_item()
+            elif name == "Plant":
+                self.control.spawn_plant()
+                play_place_item()
+            elif name == "Pond":
+                self.control.spawn_pond()
+                play_place_item()
+            else:
+                self.control.spawn_animal(name.upper())
+                play_place_item()
+                # Play animal sound
+                play_animal_sound(name.lower())
+                
+            play_purchase_success()
+            self._feedback(f"Purchased {name} for ${item['cost']}")
         else:
-            self._show_feedback("Insufficient funds!")
+            play_insufficient_funds()
+            self._feedback("Insufficient funds!")
 
-    def _show_feedback(self, msg: str):
-        self.feedback       = msg
-        self.feedback_timer = 2.0
-        self.feedback_alpha = 255
+    def _feedback(self, msg: str):
+        self.feedback, self.feedback_timer, self.feedback_alpha = msg, 2.0, 255
+
 
     # ───────────────────────────── drawing ───────────────────────────────────
     # def _draw(self):
