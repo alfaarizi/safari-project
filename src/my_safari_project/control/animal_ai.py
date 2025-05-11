@@ -11,41 +11,40 @@ from my_safari_project.model.herbivore import Herbivore
 from my_safari_project.model.carnivore import Carnivore
 
 # Constants
-COLLISION_RADIUS = 0.5
-DETECTION_RADIUS = 5.0
-EPSILON = 1e-5
+COLLISION_RADIUS  = 0.5
+DETECTION_RADIUS  = 5.0
+EPSILON           = 1e-5
 
 # Visual constants
-DEFAULT_COLOR = Color(0, 100, 255, 128)
-OUTLINE_COLOR = Color(255, 255, 255)
-COLLISION_COLOR = Color(255, 0, 0, 180)
-LABEL_FONT_SIZE = 28
+DEFAULT_COLOR     = Color(0, 100, 255, 128)
+OUTLINE_COLOR     = Color(255, 255, 255)
+COLLISION_COLOR   = Color(255, 0, 0, 180)
+LABEL_FONT_SIZE   = 28
 
 # Simulation constants
-HUNGER_THRESHOLD, THIRST_THRESHOLD = 6, 6
-REPRODUCTION_COOLDOWN, COOLDOWN_RATE = 60.0, 0.5
-MEMORY_TIMEOUT = 120.0
-MAX_SPEED = 2.0
+HUNGER_THRESHOLD, THIRST_THRESHOLD                  = 6, 6
+REPRODUCTION_COOLDOWN, REPRODUCTION_COOLDOWN_RATE   = 60.0, 0.5
+MIGRATION_COOLDOWN, MIGRATION_COOLDOWN_RATE         = 10.0, 0.5
+MIN_WANDER_DISTANCE, MAX_WANDER_DISTANCE            = 5.0, 15.0
+STATE_TIMEOUT, MEMORY_TIMEOUT                       = 20.0, 120.0
+MAX_SPEED                                           = 2.0
 SPEEDS = {
-    "SEEKING": MAX_SPEED,
-    "MIGRATION": MAX_SPEED * 0.8,
-    "WANDERING": MAX_SPEED * 0.4,
-    "IDLE": 0
+    "SEEKING"     : MAX_SPEED,
+    "MIGRATION"   : MAX_SPEED * 0.8,
+    "WANDERING"   : MAX_SPEED * 0.4,
+    "IDLE"        : 0
 }
-
-MIN_WANDER_DISTANCE = 5.0 
-MAX_WANDER_DISTANCE = 15.0
 
 class AnimalState(Enum):
     SEEKING_WATER = auto()
-    SEEKING_FOOD = auto()
-    SEEKING_MATE = auto()
-    DRINKING = auto()
-    EATING = auto()
-    REPRODUCING = auto()
-    RESTING = auto()
-    MIGRATING = auto()
-    WANDER = auto()
+    SEEKING_FOOD  = auto()
+    SEEKING_MATE  = auto()
+    DRINKING      = auto()
+    EATING        = auto()
+    REPRODUCING   = auto()
+    RESTING       = auto()
+    MIGRATING     = auto()
+    WANDER        = auto()
     
     @property
     def speed(self):
@@ -66,24 +65,25 @@ class AnimalState(Enum):
         # Duration (in seconds) the animal spends in each state.
         # States with a duration of 0.0 represent continuous behavior until a new state is triggered.
         return {
-            AnimalState.SEEKING_WATER   : 0.0,
-            AnimalState.SEEKING_FOOD    : 0.0,
-            AnimalState.SEEKING_MATE    : 0.0,
-            AnimalState.DRINKING        : 3.0,
-            AnimalState.EATING          : 5.0,
-            AnimalState.REPRODUCING     : 5.0,
-            AnimalState.RESTING         : 8.0,
-            AnimalState.MIGRATING       : random.uniform(5.0, 12.0),
-            AnimalState.WANDER          : max(4.0, random.uniform(MIN_WANDER_DISTANCE, MAX_WANDER_DISTANCE)/max(SPEEDS["WANDERING"], 0.1)*1.5)
+            AnimalState.SEEKING_WATER : 0.0,
+            AnimalState.SEEKING_FOOD  : 0.0,
+            AnimalState.SEEKING_MATE  : 0.0,
+            AnimalState.DRINKING      : 3.0,
+            AnimalState.EATING        : 5.0,
+            AnimalState.REPRODUCING   : 5.0,
+            AnimalState.RESTING       : 8.0,
+            AnimalState.MIGRATING     : random.uniform(5.0, 12.0),
+            AnimalState.WANDER        : max(4.0, random.uniform(MIN_WANDER_DISTANCE, MAX_WANDER_DISTANCE)/max(SPEEDS["WANDERING"], 0.1)*1.5)
         }[self]
 
 @dataclass
 class AnimalStatus:
-    state: AnimalState = AnimalState.WANDER
-    timer: float = None
-    target: Vector2 = None
-    target_entity: Any = None
+    state: AnimalState           = AnimalState.WANDER
+    timer: float                 = None
+    target: Vector2              = None
+    target_entity: Any           = None
     reproduction_cooldown: float = REPRODUCTION_COOLDOWN
+    migration_cooldown: float    = 0.0
     memory: Dict = field(default_factory=lambda: {
         "food": [], "water": [], "same_species": [] # (entity, last_seen)
     })
@@ -124,7 +124,8 @@ class AnimalAI:
             animal.add_thirst(dt)
             # update reproduction cooldown
             state = self.animal_states[animal.animal_id]
-            state.reproduction_cooldown = max(state.reproduction_cooldown - COOLDOWN_RATE*dt, 0)
+            state.reproduction_cooldown = max(state.reproduction_cooldown - REPRODUCTION_COOLDOWN_RATE*dt, 0)
+            state.migration_cooldown    = max(state.migration_cooldown - MIGRATION_COOLDOWN_RATE*dt, 0)
             # memory cleanup
             collections = {
                 "water": self.board.ponds,
@@ -234,7 +235,7 @@ class AnimalAI:
                                             entity_status.reproduction_cooldown = 0.1 # Just enough to prevent double reproduction
                                             self._change_state(animal_id, AnimalState.REPRODUCING)
                                 case "jeep":
-                                    is_moving = bool(entity.path) and entity._waypoint_index < len(entity.path)
+                                    is_moving = bool(entity._path) and entity._idx < len(entity._path)
                                     if is_moving: animal.is_alive = False
             # sort detections by distance
             self.detected_entities[animal_id]["detected"].sort(key=lambda e: e["distance"])
@@ -284,7 +285,7 @@ class AnimalAI:
             # Check if we should reconsider the current state
             time_since_change = self.simulation_time - status.last_state_change
             needs_state_update = (
-                time_since_change > 20.0 and
+                time_since_change > STATE_TIMEOUT or
                 status.target is None
             )
             if needs_state_update: self._next_state(animal_id)
@@ -314,7 +315,7 @@ class AnimalAI:
             any(entity.is_adult() for entity,_ in status.memory["same_species"])
         )
         can_rest        = animal.hunger < HUNGER_THRESHOLD * 0.7 and animal.thirst < THIRST_THRESHOLD * 0.7
-        can_migrate     = len(status.memory["same_species"]) > 0
+        can_migrate     = len(status.memory["same_species"]) > 0 and status.migration_cooldown <= 0
         # prioritize states
         if needs_water:
             self._change_state(animal_id, AnimalState.SEEKING_WATER)
@@ -331,6 +332,8 @@ class AnimalAI:
 
     def _change_state(self, animal_id: int, new_state: AnimalState) -> None:
         animal, status = self.collision_shapes[animal_id]["animal"], self.animal_states[animal_id]
+        if status.state != AnimalState.MIGRATING and new_state == AnimalState.MIGRATING:
+            status.migration_cooldown = MIGRATION_COOLDOWN
         status.state, status.last_state_change = new_state, self.simulation_time
         match status.state:
             case AnimalState.SEEKING_WATER if status.memory["water"]:
@@ -429,6 +432,8 @@ class AnimalAI:
             if animal_id in self.animal_states:
                 state = self.animal_states[animal_id]
                 state_text = f"{state.state.name}: {state.timer:.1f}s" 
-                stats_text = f"A: {int(animal.age)}    L: {animal.lifespan}   H: {int(animal.hunger)}   T: {int(animal.thirst)}   C: {state.reproduction_cooldown:.1f}s"
+                stats_text = f"A: {int(animal.age)}    L: {animal.lifespan}   H: {int(animal.hunger)}   T: {int(animal.thirst)}"
+                timer_text = f"R: {state.reproduction_cooldown:.1f}s | M: {state.migration_cooldown:.1f}s"
                 render_text(state_text, self.state_label, (255, 255, 0), (x, y + col_radius + 10))
                 render_text(stats_text, self.state_label, (255, 255, 255), (x, y + col_radius + 25))
+                render_text(timer_text, self.state_label, (255, 255, 255), (x, y + col_radius + 40))

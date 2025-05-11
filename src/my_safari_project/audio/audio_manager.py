@@ -120,7 +120,16 @@ class AudioManager:
                 self.ambient_channel.play(self.sounds[sound_name])
             else:
                 # Use a general channel for other sounds
-                pygame.mixer.find_channel().play(self.sounds[sound_name])
+                channel = pygame.mixer.find_channel()
+                if channel is None:
+                    # Find first busy non-reserved channel and stop it
+                    for i in range(4, pygame.mixer.get_num_channels()):
+                        if pygame.mixer.Channel(i).get_busy():
+                            pygame.mixer.Channel(i).stop()
+                            channel = pygame.mixer.Channel(i)
+                            break
+                if channel: channel.play(self.sounds[sound_name])
+                else: return False
             return True
         else:
             print(f"Sound '{sound_name}' not found")

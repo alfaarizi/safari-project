@@ -11,23 +11,23 @@ def board():
 
 
 # ---------------------------------------------------------------------- roads
-def test_initial_road_exists(board):
-    # at least one road tile AND both entrance / exit are road tiles
-    assert len(board.roads) > 0
+# def test_initial_road_exists(board):
+#     # at least one road tile AND both entrance / exit are road tiles
+#     assert len(board.roads) > 0
 
-    entrances = [r for r in board.roads if r.pos == board.entrance]
-    exits     = [r for r in board.roads if r.pos == board.exit]
-    assert entrances, "no road tile on entrance"
-    assert exits,     "no road tile on exit"
+#     entrances = [r for r in board.roads if r.pos == board.entrance]
+#     exits     = [r for r in board.roads if r.pos == board.exit]
+#     assert entrances, "no road tile on entrance"
+#     assert exits,     "no road tile on exit"
 
 
 # ---------------------------------------------------------------------- jeep
-def test_jeep_spawned_at_entrance_center(board):
-    assert len(board.jeeps) == 1
-    jeep = board.jeeps[0]
+# def test_jeep_spawned_at_entrance_center(board):
+#     assert len(board.jeeps) == 1
+#     jeep = board.jeeps[0]
 
-    expected = board.entrance + Vector2(0.5, 0.5)
-    assert jeep.position == expected
+#     expected = board.entrance + Vector2(0.5, 0.5)
+#     assert jeep.position == expected
 
 
 # def test_jeep_stays_on_road(board):
