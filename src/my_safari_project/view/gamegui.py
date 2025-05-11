@@ -23,6 +23,7 @@ from my_safari_project.audio import (
 
 # ────────────────────────────── layout constants ──────────────────────────────
 SCREEN_W, SCREEN_H = 1200, 800
+
 # Define BOARD_RECT to use most of the screen space
 SIDE_PANEL_W       = 200
 TOP_BAR_H          = 50
@@ -330,7 +331,8 @@ class GameGUI:
 
         self.item_rects.clear()
         top  = py + 50    # top of list
-        bottom  = SCREEN_H - BOTTOM_BAR_H - 60  # leaving space for the pause buttons
+        bottom = SCREEN_H - BOTTOM_BAR_H - 32  #  speed buttons row - gap_above_buttons
+
         scroll_limit  = max(0, (len(self.shop_items)*44) - (bottom-top))
 
         # clamp scroll offset
@@ -351,10 +353,12 @@ class GameGUI:
 
              # scrollbar
             if scroll_limit > 0:
-                bar_h = (bottom-top) * (bottom-top) / (bottom-top+scroll_limit)
+                frac  = (bottom - top)/(bottom - top + scroll_limit)
+                bar_h = max(20, int((bottom-top) * frac))   #never smaller than 20 px
                 bar_y = top - self.shop_scroll * (bottom-top-bar_h) / scroll_limit
-                sb_rect = pygame.Rect(SCREEN_W-16, int(bar_y), 8, int(bar_h))
-                pygame.draw.rect(self.screen, (40,40,50), (SCREEN_W-16, top, 8, bottom-top))
+                rail_x = px + SIDE_PANEL_W - 16  # inside the panel, not at screen edge
+                sb_rect = pygame.Rect(rail_x, int(bar_y), 8, int(bar_h))
+                pygame.draw.rect(self.screen, (40,40,50), (rail_x, top, 8, bottom-top))
                 pygame.draw.rect(self.screen, (140,140,160), sb_rect, border_radius=3)
 
         # speed / pause buttons
@@ -392,14 +396,21 @@ class GameGUI:
     # ───────────────────────── speed buttons ─────────────────────────────
     def _draw_speed_buttons(self):
         panel_x = SCREEN_W - SIDE_PANEL_W
-        btn_w, btn_h, gap = 50, 32, 8
-        
+        btn_h, gap = 32, 8
+        num_btns = 4 
+        #the width inside the panel that we can use for the play/pause and speed buttons 
+        usable_w = SIDE_PANEL_W - 40 - gap*(num_btns-1)
+        btn_w = max(34, usable_w // num_btns)
+
+
         #horizontal center inside side-panel
         total_w = btn_w *4 + gap*3 
         start_x = panel_x + (SIDE_PANEL_W - total_w)//2
 
         #verticall center inside bottom-bar 
         y = SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - btn_h)//2
+        total_w = btn_w * 4 + gap * 3
+        start_x = panel_x + (SIDE_PANEL_W - total_w) // 2
 
         rects = []
         for i in range(4):
@@ -424,10 +435,12 @@ class GameGUI:
                 centre = r.center
                 paused = (self.control.time_multiplier == 0)
 
+                #drawing the outline for both play/pause button 
+                pygame.draw.circle(self.screen, white, centre, radius, 2)
+
                 # background
                 if paused:
-                    pygame.draw.circle(self.screen, green_bg, centre, radius)
-                    pygame.draw.circle(self.screen, white, centre, radius, 2)
+                    pygame.draw.circle(self.screen, green_bg, centre, radius-1)
 
                 if paused:
                     # draw resume button ||

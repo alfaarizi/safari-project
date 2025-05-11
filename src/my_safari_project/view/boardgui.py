@@ -167,10 +167,13 @@ class BoardGUI:
             return
 
         # ensure at least 4×4 tiles fit in the view
-        self.tile = max(4, min(self.tile,
-                               rect.width  // 4,
-                               rect.height // 4))
+        # self.tile = max(4, min(self.tile,
+        #                        rect.width  // 4,
+        #                        rect.height // 4))
         side = self.tile
+
+        # keep tile size in sane bounds
+        self.tile = max(self.MIN_TILE, min(self.tile, self.MAX_TILE))
 
         # how many tiles in each direction from camera
         half_w = rect.width  // (2 * side)
