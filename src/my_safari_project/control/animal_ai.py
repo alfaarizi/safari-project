@@ -20,6 +20,8 @@ DEFAULT_COLOR     = Color(0, 100, 255, 128)
 OUTLINE_COLOR     = Color(255, 255, 255)
 COLLISION_COLOR   = Color(255, 0, 0, 180)
 LABEL_FONT_SIZE   = 28
+# Label font
+#font.init()
 
 # Simulation constants
 HUNGER_THRESHOLD, THIRST_THRESHOLD                  = 6, 6
