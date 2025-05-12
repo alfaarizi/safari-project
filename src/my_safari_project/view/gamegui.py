@@ -11,7 +11,7 @@ from my_safari_project.control.game_controller import (
     GameController,
     RANGER_COST, PLANT_COST, POND_COST,
     HYENA_COST, LION_COST, TIGER_COST,
-    BUFFALO_COST, ELEPHANT_COST, GIRAFFE_COST, HIPPO_COST, ZEBRA_COST
+    BUFFALO_COST, ELEPHANT_COST, GIRAFFE_COST, HIPPO_COST, ZEBRA_COST,CHIP_COST
 )
 # Import sound effects
 from my_safari_project.audio import (
@@ -95,6 +95,7 @@ class GameGUI:
             {"name": "Giraffe",  "cost": GIRAFFE_COST},
             {"name": "Hippo",    "cost": HIPPO_COST},
             {"name": "Zebra",    "cost": ZEBRA_COST},
+            {"name": "Light Chip", "cost": CHIP_COST}
         ]
         self.item_rects: list[pygame.Rect] = []
         self.hover_item = -1
@@ -108,6 +109,8 @@ class GameGUI:
         """Called every frame by your main loop."""
         self._update_ui(dt)
         self._handle_events()
+        hour, minute = self.control.timer.get_game_time()["hours"], self.control.timer.get_game_time()["minutes"]
+        self.board_gui.update_day_night(dt, hour, minute, pygame.mouse.get_pos())
         self._draw()
         self._check_day_transition()
 
@@ -124,7 +127,8 @@ class GameGUI:
             self.board_gui.follow(self.control.board.jeeps[0].position)
 
         # day/night tint
-        self.board_gui.update_day_night(dt)
+        hour, minute = self.control.timer.get_game_time()["hours"], self.control.timer.get_game_time()["minutes"]
+        self.board_gui.update_day_night(dt, hour, minute, pygame.mouse.get_pos())
 
         # feedback fade
         if self.feedback_timer > 0:
@@ -164,7 +168,14 @@ class GameGUI:
             
             # ── mouse buttons ─────────────────────────────────────
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                if   self.btn_zoom_in .collidepoint(ev.pos):
+                if self.control.chip_placement_mode:
+                    world_pos = self.board_gui.screen_to_world(ev.pos)
+                    if world_pos:
+                        chip_placed = self.control.handle_chip_click(world_pos)
+                        if chip_placed:
+                            return 
+
+                if self.btn_zoom_in.collidepoint(ev.pos):
                     self.board_gui.zoom(+1, ev.pos, BOARD_RECT)
                     play_button_click()
                 elif self.btn_zoom_out.collidepoint(ev.pos):
@@ -175,10 +186,10 @@ class GameGUI:
                 else:
                     for i, r in enumerate(self.item_rects):
                         if r.collidepoint(ev.pos):
-                            play_button_click
+                            play_button_click()
                             self._buy_item(i)
                             break
-            
+
             elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
                 if self.board_gui._dragging:
                     self.board_gui.stop_drag()
@@ -219,6 +230,9 @@ class GameGUI:
             elif name == "Pond":
                 self.control.spawn_pond()
                 play_place_item()
+            elif name == "Light Chip":
+                self.control.enter_chip_mode()
+                return
             else:
                 self.control.spawn_animal(name.upper())
                 play_place_item()
