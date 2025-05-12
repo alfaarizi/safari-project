@@ -64,6 +64,7 @@ ELEPHANT_COST = 300
 GIRAFFE_COST  = 150
 HIPPO_COST    = 175
 ZEBRA_COST    = 130
+CHIP_COST = 50
 
 
 # -----------------------------------------------------------
@@ -102,6 +103,11 @@ class GameController:
         self.wildlife_ai = WildlifeAI(self.board, self.capital)
         self._poacher_timer = 0.0
 
+        self.visible_animals_night = set()
+        self.board.visible_animals_night = self.visible_animals_night
+        self.chip_placement_mode = False
+
+
     def run(self):
         """Main loop."""
         while self.running:
@@ -110,6 +116,18 @@ class GameController:
             self._update_sim(dt)
             self.game_gui.update(dt)
         self.game_gui.exit()
+
+    def handle_chip_click(self, world_pos: Vector2) -> bool:
+        animal_clicked = self.game_gui.board_gui.get_animal_at(world_pos)
+        if animal_clicked:
+            self.visible_animals_night.add(animal_clicked.animal_id)
+            self.chip_placement_mode = False
+            self.game_gui._feedback(f"Animal #{animal_clicked.animal_id} tagged!")
+            return True
+        else:
+            self.game_gui._feedback("No animal at clicked location.")
+            return False
+
 
     # ───────────────────────── Simulation Update ──────────────────────────
     def _update_sim(self, dt: float):
@@ -267,3 +285,8 @@ class GameController:
 
     def is_game_over(self) -> bool:
         return self.won or self.lost
+    
+    def enter_chip_mode(self):
+        self.chip_placement_mode = True
+        self.game_gui._feedback("Click an animal to tag with chip")
+
