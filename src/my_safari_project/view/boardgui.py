@@ -288,19 +288,20 @@ class BoardGUI:
             screen.blit(ov, (ox, oy))
 
     def screen_to_board(self, screen_pos, rect):
-        """Convert screen coordinates to board coordinates"""
-        rel_x = (screen_pos[0] - rect.x) / self.tile
-        rel_y = (screen_pos[1] - rect.y) / self.tile
-        return Vector2(
-            self.cam.x - rect.width / (2 * self.tile) + rel_x,
-            self.cam.y - rect.height / (2 * self.tile) + rel_y
-        )
+        offset_x = screen_pos[0] - rect.centerx
+        offset_y = screen_pos[1] - rect.centery
 
+        # Convert to board coordinates using camera position
+        board_x = self.cam.x + (offset_x / self.tile)
+        board_y = self.cam.y + (offset_y / self.tile)
+
+        return Vector2(board_x, board_y)
     def board_to_screen(self, board_pos, rect):
-        """Convert board coordinates to screen coordinates"""
-        rel_x = board_pos.x - (self.cam.x - rect.width / (2 * self.tile))
-        rel_y = board_pos.y - (self.cam.y - rect.height / (2 * self.tile))
-        return Vector2(
-            rect.x + rel_x * self.tile,
-            rect.y + rel_y * self.tile
-        )
+        offset_x = (board_pos.x - self.cam.x) * self.tile
+        offset_y = (board_pos.y - self.cam.y) * self.tile
+
+        # Convert to screen coordinates
+        screen_x = rect.centerx + offset_x
+        screen_y = rect.centery + offset_y
+
+        return Vector2(screen_x, screen_y)

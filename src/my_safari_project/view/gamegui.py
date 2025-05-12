@@ -188,7 +188,7 @@ class GameGUI:
                     x, y = int(board_pos.x), int(board_pos.y)
 
                     # Check if we can place 10 cells
-                    if self.control.capital.getBalance() >= 100:  # Cost for 10-cell segment
+                    if self.control.capital.getBalance() >= 10:  # Cost for 10-cell segment
                         if self.control.board.add_road_segment(x, y, self.dragging_road["type"]):
                             self.control.capital.deductFunds(100)
                             play_place_item()
