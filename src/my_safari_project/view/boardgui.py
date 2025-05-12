@@ -327,7 +327,6 @@ class BoardGUI:
 
             # Get mouse position directly
             mx, my = self._cursor_pos  # Already stored each frame
-            print(mx,my)
             pygame.draw.circle(
                 spotlight, (0, 0, 0, 220),
                 (mx, my),  # directly use mouse screen position
