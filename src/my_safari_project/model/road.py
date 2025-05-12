@@ -16,10 +16,7 @@ from enum import Enum
 class RoadType(Enum):
     STRAIGHT_H = "h_road"  # Horizontal straight road
     STRAIGHT_V = "v_road"  # Vertical straight road
-    TURN_L = "l_road"      # L-shaped turn
-    TURN_RL = "rl_road"    # Reversed L-shaped turn
-    TURN_IL = "il_road"    # Inverted L-shaped turn
-    TURN_IRL = "irl_road"  # Inverted reversed L-shaped turn
+
 
 
 class Road:
