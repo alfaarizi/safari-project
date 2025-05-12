@@ -11,25 +11,26 @@ from typing import List
 from pygame.math import Vector2
 
 
+from enum import Enum
+
 class RoadType(Enum):
-    STRAIGHT_H = "straight_h"
-    STRAIGHT_V = "straight_v"
-    CURVE_NE   = "curve_ne"
-    CURVE_NW   = "curve_nw"
-    CURVE_SE   = "curve_se"
-    CURVE_SW   = "curve_sw"
+    STRAIGHT_H = "h_road"  # Horizontal straight road
+    STRAIGHT_V = "v_road"  # Vertical straight road
+    TURN_L = "l_road"      # L-shaped turn
+    TURN_RL = "rl_road"    # Reversed L-shaped turn
+    TURN_IL = "il_road"    # Inverted L-shaped turn
+    TURN_IRL = "irl_road"  # Inverted reversed L-shaped turn
 
 
 class Road:
-
     def __init__(self, pos: Vector2, road_type: RoadType):
-        self.pos: Vector2       = Vector2(pos)
-        self.road_type: RoadType = road_type
+        self.pos = Vector2(pos)
+        self.type = road_type
         self.neighbors: List[Vector2] = []
 
-    def add_neighbor(self, neighbor: Vector2):
-        if neighbor not in self.neighbors:
-            self.neighbors.append(Vector2(neighbor))
+    def add_neighbor(self, pos: Vector2):
+        if pos not in self.neighbors:
+            self.neighbors.append(pos)
 
     def length_to(self, other: "Road") -> float:
         return self.pos.distance_to(other.pos)

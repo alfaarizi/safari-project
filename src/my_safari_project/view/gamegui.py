@@ -167,6 +167,8 @@ class GameGUI:
 
     # ─────────────────────────── event handling ──────────────────────────────
     def _handle_events(self):
+        mouse_pos = pygame.mouse.get_pos()
+
         for ev in pygame.event.get():
             if ev.type == pygame.QUIT:
                 self.control.running = False
@@ -188,17 +190,21 @@ class GameGUI:
                     self.board_gui.zoom(-1, ev.pos, BOARD_RECT)
                     play_button_click()
                 elif BOARD_RECT.collidepoint(ev.pos):
+                    # Check if we're placing a road
                     if self.dragging_road:
-                        # Place road if we're dragging one
                         board_pos = self.board_gui.screen_to_board(ev.pos, BOARD_RECT)
-                        if self.control.capital.deductFunds(10):  # Road cost
-                            self.control.board.add_road(int(board_pos.x), int(board_pos.y))
-                            play_place_item()
-                            self._feedback(f"Placed {self.dragging_road['name']}")
-                        else:
-                            play_insufficient_funds()
-                            self._feedback("Insufficient funds!")
-                        self.dragging_road = None
+                        x, y = int(board_pos.x), int(board_pos.y)
+                        # Check if position is within board bounds
+                        if (0 <= x < self.control.board.width and
+                                0 <= y < self.control.board.height):
+                            if self.control.capital.getBalance() >= 10:
+                                self.control.capital.deductFunds(10)
+                                self.control.board.add_road(x, y, self.dragging_road["type"])
+                                play_place_item()
+                                self._feedback(f"Placed {self.dragging_road['name']}")
+                            else:
+                                play_insufficient_funds()
+                                self._feedback("Insufficient funds!")
                     else:
                         self.board_gui.start_drag(ev.pos)
                 else:
@@ -218,7 +224,6 @@ class GameGUI:
                 if self.board_gui._dragging:
                     self.board_gui.stop_drag()
                     self.auto_follow = False
-                self.dragging_road = None
 
             elif ev.type == pygame.MOUSEMOTION:
                 if self.board_gui._dragging:
@@ -230,10 +235,6 @@ class GameGUI:
                          if r.collidepoint(ev.pos)),
                         -1
                     )
-
-            elif ev.type == pygame.MOUSEWHEEL:
-                self.board_gui.zoom(ev.y, pygame.mouse.get_pos(), BOARD_RECT)
-                self.auto_follow = False
 
     # ───────────────────────────── shop logic ───────────────────────────────
     def _buy_item(self, index: int):
@@ -272,26 +273,29 @@ class GameGUI:
     def _draw(self):
         self.screen.fill((40, 45, 50))
         self.board_gui.render(self.screen, BOARD_RECT)
+
+        # Draw road preview
+        if self.dragging_road and BOARD_RECT.collidepoint(pygame.mouse.get_pos()):
+            mouse_pos = pygame.mouse.get_pos()
+            board_pos = self.board_gui.screen_to_board(mouse_pos, BOARD_RECT)
+            x, y = int(board_pos.x), int(board_pos.y)
+            if 0 <= x < self.control.board.width and 0 <= y < self.control.board.height:
+                screen_pos = self.board_gui.board_to_screen(Vector2(x, y), BOARD_RECT)
+                preview_rect = pygame.Rect(
+                    int(screen_pos.x),
+                    int(screen_pos.y),
+                    int(self.board_gui.tile),
+                    int(self.board_gui.tile)
+                )
+                pygame.draw.rect(self.screen, (105, 105, 105, 128), preview_rect)
+                pygame.draw.rect(self.screen, (255, 255, 255), preview_rect, 1)
+
         self._draw_top_bar()
         self._draw_bottom_bar()
         self._draw_side_panel()
         self._draw_feedback()
         self._draw_zoom_buttons()
         pygame.display.flip()
-
-        # Draw road preview when dragging
-        if self.dragging_road and BOARD_RECT.collidepoint(pygame.mouse.get_pos()):
-            board_pos = self.board_gui.screen_to_board(pygame.mouse.get_pos(), BOARD_RECT)
-            screen_pos = self.board_gui.board_to_screen(Vector2(int(board_pos.x), int(board_pos.y)), BOARD_RECT)
-
-            preview_rect = pygame.Rect(
-                screen_pos.x,
-                screen_pos.y,
-                self.board_gui.tile,
-                self.board_gui.tile
-            )
-            pygame.draw.rect(self.screen, (105, 105, 105, 128), preview_rect)
-
     # ---------------- top bar ------------------------------------------------
     def _draw_top_bar(self):
         margin, box_h, radius = 10, 30, 8

@@ -107,6 +107,35 @@ class Board:
         t1.add_neighbor(t2.pos)
         t2.add_neighbor(t1.pos)
 
+    def add_road(self, x: int, y: int, road_type: str) -> bool:
+        """Add a road from the shop at the specified position."""
+        # Map shop road types to RoadType enum
+        road_type_map = {
+            "h_road": RoadType.STRAIGHT_H,
+            "v_road": RoadType.STRAIGHT_V,
+            "l_road": RoadType.TURN_L,
+            "rl_road": RoadType.TURN_RL,
+            "il_road": RoadType.TURN_IL,
+            "irl_road": RoadType.TURN_IRL
+        }
+
+        # Check bounds
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return False
+
+        # Check if position is already occupied
+        for road in self.roads:
+            if road.pos == Vector2(x, y):
+                return False
+
+        # Create and add new road
+        if road_type in road_type_map:
+            road = Road(Vector2(x, y), road_type_map[road_type])
+            self.roads.append(road)
+            return True
+
+        return False
+
     # ── path helper ───────────────────────────────────────────────────────
     def _build_path(self, start: Vector2, goal: Vector2) -> list[Vector2]:
         """Simple BFS along road tiles."""
