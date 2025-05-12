@@ -109,8 +109,7 @@ class GameGUI:
         """Called every frame by your main loop."""
         self._update_ui(dt)
         self._handle_events()
-        hour, minute = self.control.timer.get_game_time()["hours"], self.control.timer.get_game_time()["minutes"]
-        self.board_gui.update_day_night(dt, hour, minute, pygame.mouse.get_pos())
+        self.board_gui.update_day_night(dt, self.control.timer.elapsed_seconds, pygame.mouse.get_pos())
         self._draw()
         self._check_day_transition()
 
@@ -127,8 +126,8 @@ class GameGUI:
             self.board_gui.follow(self.control.board.jeeps[0].position)
 
         # day/night tint
-        hour, minute = self.control.timer.get_game_time()["hours"], self.control.timer.get_game_time()["minutes"]
-        self.board_gui.update_day_night(dt, hour, minute, pygame.mouse.get_pos())
+        elapsed = self.control.timer.elapsed_seconds
+        self.board_gui.update_day_night(dt, elapsed, pygame.mouse.get_pos())
 
         # feedback fade
         if self.feedback_timer > 0:
