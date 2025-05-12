@@ -136,9 +136,7 @@ class Board:
 
         return False
 
-    # In board.py - Add a new method for placing road segments
     def add_road_segment(self, x: int, y: int, road_type: str) -> bool:
-        """Add a 10-cell road segment starting from the given position."""
         road_type_map = {
             "h_road": RoadType.STRAIGHT_H,
             "v_road": RoadType.STRAIGHT_V
@@ -147,24 +145,27 @@ class Board:
         if road_type not in road_type_map:
             return False
 
-        # Check bounds and occupancy for all 10 cells
         cells_to_check = []
         if road_type == "h_road":
-            if x + 9 >= self.width:  # Check if segment would go out of bounds
-                return False
-            cells_to_check = [(x + i, y) for i in range(10)]
+            max_cells = min(10, self.width - x)
+            for i in range(max_cells):
+                cur_x = x + i
+                # Stop if we hit another road
+                if any(r.pos == Vector2(cur_x, y) for r in self.roads):
+                    break
+                cells_to_check.append((cur_x, y))
         else:  # v_road
-            if y + 9 >= self.height:  # Check if segment would go out of bounds
-                return False
-            cells_to_check = [(x, y + i) for i in range(10)]
+            max_cells = min(10, self.height - y)
+            for i in range(max_cells):
+                cur_y = y + i
+                # Stop if we hit another road
+                if any(r.pos == Vector2(x, cur_y) for r in self.roads):
+                    break
+                cells_to_check.append((x, cur_y))
 
-        # Check if any cell is already occupied
-        for cell_x, cell_y in cells_to_check:
-            for road in self.roads:
-                if road.pos == Vector2(cell_x, cell_y):
-                    return False
+        if not cells_to_check:
+            return False
 
-        # Place roads and connect them
         prev_road = None
         for cell_x, cell_y in cells_to_check:
             new_road = Road(Vector2(cell_x, cell_y), road_type_map[road_type])
@@ -174,6 +175,8 @@ class Board:
                 prev_road.add_neighbor(new_road.pos)
                 new_road.add_neighbor(prev_road.pos)
             prev_road = new_road
+
+        return True
 
         return True
 

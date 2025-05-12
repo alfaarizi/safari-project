@@ -164,19 +164,7 @@ class GameGUI:
         mouse_pos = pygame.mouse.get_pos()
 
         for ev in pygame.event.get():
-            if ev.type == pygame.QUIT:
-                self.control.running = False
-
-            elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_d:
-                self.control.wildlife_ai.animal_ai.debug_mode = not self.control.wildlife_ai.animal_ai.debug_mode
-                debug_status = "ON" if self.control.wildlife_ai.animal_ai.debug_mode else "OFF"
-                self._feedback(f"Debug mode: {debug_status}")
-                play_button_click()
-
-            elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_f:
-                self.auto_follow = not self.auto_follow
-
-            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 if self.btn_zoom_in.collidepoint(ev.pos):
                     self.board_gui.zoom(+1, ev.pos, BOARD_RECT)
                     play_button_click()
@@ -187,17 +175,20 @@ class GameGUI:
                     board_pos = self.board_gui.screen_to_board(ev.pos, BOARD_RECT)
                     x, y = int(board_pos.x), int(board_pos.y)
 
-                    # Check if we can place 10 cells
-                    if self.control.capital.getBalance() >= 10:  # Cost for 10-cell segment
+                    if self.control.capital.getBalance() >= 100:
+                        # Allow placement without board boundary checks
                         if self.control.board.add_road_segment(x, y, self.dragging_road["type"]):
                             self.control.capital.deductFunds(100)
                             play_place_item()
-                            self._feedback(f"Placed {self.dragging_road['name']} segment")
+                            self._feedback(f"Road placed for $100")
                         else:
+                            play_insufficient_funds()
                             self._feedback("Cannot place road here!")
                     else:
                         play_insufficient_funds()
                         self._feedback("Insufficient funds!")
+                    self.dragging_road = None
+
                     self.dragging_road = None
                 elif BOARD_RECT.collidepoint(ev.pos):
                     self.board_gui.start_drag(ev.pos)
@@ -264,6 +255,7 @@ class GameGUI:
 
 
     # ───────────────────────────── drawing ───────────────────────────────────
+    # In gamegui.py - Update the road preview section in _draw method
     def _draw(self):
         self.screen.fill((40, 45, 50))
         self.board_gui.render(self.screen, BOARD_RECT)
@@ -274,18 +266,34 @@ class GameGUI:
             board_pos = self.board_gui.screen_to_board(mouse_pos, BOARD_RECT)
             x, y = int(board_pos.x), int(board_pos.y)
 
-            # Preview all 10 cells
             cells_to_preview = []
             if self.dragging_road["type"] == "h_road":
-                cells_to_preview = [(x + i, y) for i in range(10) if x + i < self.control.board.width]
+                if 0 <= y < self.control.board.height:
+                    start_x = x
+                    max_cells = min(10, self.control.board.width - start_x if start_x >= 0 else 10)
+                    for i in range(max_cells):
+                        cur_x = start_x + i
+                        if 0 <= cur_x < self.control.board.width:
+                            if any(r.pos == Vector2(cur_x, y) for r in self.control.board.roads):
+                                break
+                            cells_to_preview.append((cur_x, y))
             else:  # v_road
-                cells_to_preview = [(x, y + i) for i in range(10) if y + i < self.control.board.height]
+                if 0 <= x < self.control.board.width:
+                    start_y = y
+                    max_cells = min(10, self.control.board.height - start_y if start_y >= 0 else 10)
+                    for i in range(max_cells):
+                        cur_y = start_y + i
+                        if 0 <= cur_y < self.control.board.height:
+                            if any(r.pos == Vector2(x, cur_y) for r in self.control.board.roads):
+                                break
+                            cells_to_preview.append((x, cur_y))
 
+            # Draw preview cells
             for cell_x, cell_y in cells_to_preview:
                 screen_pos = self.board_gui.board_to_screen(Vector2(cell_x, cell_y), BOARD_RECT)
                 preview_rect = pygame.Rect(
-                    int(screen_pos.x),
-                    int(screen_pos.y),
+                    int(screen_pos.x - self.board_gui.tile / 2),
+                    int(screen_pos.y - self.board_gui.tile / 2),
                     int(self.board_gui.tile),
                     int(self.board_gui.tile)
                 )
