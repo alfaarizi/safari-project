@@ -186,8 +186,8 @@ class BoardGUI:
         ox = rect.centerx - int((self.cam.x - min_x) * side)
         oy = rect.centery - int((self.cam.y - min_y) * side)
 
-        vis_w = max_x - min_x
-        vis_h = max_y - min_y
+        vis_w = int(max_x - min_x)
+        vis_h = int(max_y - min_y)
 
         # ---------- background desert ----------------------------
         bg = pygame.transform.scale(self.desert, (vis_w * side, vis_h * side))
@@ -286,3 +286,21 @@ class BoardGUI:
             ov   = pygame.Surface((vis_w * side, vis_h * side), pygame.SRCALPHA)
             ov.fill(tint)
             screen.blit(ov, (ox, oy))
+
+    def screen_to_board(self, screen_pos, rect):
+        """Convert screen coordinates to board coordinates"""
+        rel_x = (screen_pos[0] - rect.x) / self.tile
+        rel_y = (screen_pos[1] - rect.y) / self.tile
+        return Vector2(
+            self.cam.x - rect.width / (2 * self.tile) + rel_x,
+            self.cam.y - rect.height / (2 * self.tile) + rel_y
+        )
+
+    def board_to_screen(self, board_pos, rect):
+        """Convert board coordinates to screen coordinates"""
+        rel_x = board_pos.x - (self.cam.x - rect.width / (2 * self.tile))
+        rel_y = board_pos.y - (self.cam.y - rect.height / (2 * self.tile))
+        return Vector2(
+            rect.x + rel_x * self.tile,
+            rect.y + rel_y * self.tile
+        )
