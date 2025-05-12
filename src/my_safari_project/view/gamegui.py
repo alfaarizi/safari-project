@@ -52,7 +52,6 @@ class GameGUI:
         self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
         pygame.display.set_caption("Safari – prototype")
 
-        # Initialize required attributes
         self.auto_follow = False
         self.feedback = ""
         self.feedback_timer = 0
@@ -61,11 +60,9 @@ class GameGUI:
         self.hover_item = -1
         self.item_rects = []
 
-        # Initialize fonts
         self.font_small = pygame.font.Font(None, 24)
         self.font_medium = pygame.font.Font(None, 32)
 
-        # Initialize zoom buttons
         self.btn_zoom_in = pygame.Rect(0, 0, ZOOM_BTN_SZ, ZOOM_BTN_SZ)
         self.btn_zoom_out = pygame.Rect(0, 0, ZOOM_BTN_SZ, ZOOM_BTN_SZ)
 
@@ -255,12 +252,10 @@ class GameGUI:
 
 
     # ───────────────────────────── drawing ───────────────────────────────────
-    # In gamegui.py - Update the road preview section in _draw method
     def _draw(self):
         self.screen.fill((40, 45, 50))
         self.board_gui.render(self.screen, BOARD_RECT)
 
-        # Draw road segment preview
         if self.dragging_road and BOARD_RECT.collidepoint(pygame.mouse.get_pos()):
             mouse_pos = pygame.mouse.get_pos()
             board_pos = self.board_gui.screen_to_board(mouse_pos, BOARD_RECT)

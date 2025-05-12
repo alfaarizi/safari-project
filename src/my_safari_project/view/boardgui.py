@@ -1,4 +1,3 @@
-# my_safari_project/view/boardgui.py
 from __future__ import annotations
 
 import os

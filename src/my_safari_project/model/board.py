@@ -48,22 +48,17 @@ class Board:
 
     # ── road building ─────────────────────────────────────────────────────
     def _build_roads(self, n: int):
-        """
-        Create `n` separate roads, roughly evenly spaced vertically.
-        Each road runs left→right across the entire world with a couple of
-        random vertical offsets so they are not perfectly straight.
-        """
+        """In Board class - Modified to remember the longest road"""
         gap = self.height // (n + 1)
+        longest_road_length = 0
+        longest_road_path = None
+
         for i in range(n):
             y = (i + 1) * gap
             start = Vector2(0, y)
-            end   = Vector2(self.width - 1, y)
+            end = Vector2(self.width - 1, y)
 
-            # remember real entrances/exits for jeep paths
-            self.entrances.append(start)
-            self.exits.append(end)
-
-            # optional random bend every ~20 tiles
+            # Build the road path
             pts: list[Vector2] = [start]
             x = 0
             while x < self.width - 1:
@@ -74,7 +69,19 @@ class Board:
                 pts.append(Vector2(x, bend_y))
             pts.append(end)
 
-            # lay segments
+            # Calculate road length
+            road_length = sum(a.distance_to(b) for a, b in zip(pts, pts[1:]))
+            if road_length > longest_road_length:
+                longest_road_length = road_length
+                longest_road_path = pts
+                self.longest_road_start = start
+                self.longest_road_end = end
+
+            # Remember entrances/exits
+            self.entrances.append(start)
+            self.exits.append(end)
+
+            # Lay road segments
             for a, b in zip(pts, pts[1:]):
                 self._lay_segment(a, b)
 
@@ -182,47 +189,72 @@ class Board:
 
     # ── path helper ───────────────────────────────────────────────────────
     def _build_path(self, start: Vector2, goal: Vector2) -> list[Vector2]:
-        """Simple BFS along road tiles."""
-        start, goal = Vector2(start), Vector2(goal)
+        road_map = {tuple(r.pos): r for r in self.roads}
+        nearest_start = min(road_map.keys(),
+                            key=lambda pos: Vector2(pos).distance_to(start))
+
+        start = Vector2(nearest_start)
         Q = deque([start])
         prev = {tuple(start): None}
-        road_map = {tuple(r.pos): r for r in self.roads}
 
+        # Find all possible paths
         while Q:
-            pos = Q.popleft()
-            if pos == goal:
-                break
-            for n in road_map[tuple(pos)].neighbors:
-                k = tuple(n)
-                if k not in prev:
-                    prev[k] = pos
-                    Q.append(n)
+            cur = Q.popleft()
+            cur_tuple = tuple(cur)
+            current_road = road_map[cur_tuple]
 
-        # reconstruct
-        path: list[Vector2] = []
-        cur = goal
-        while cur is not None:
-            path.append(cur)
-            cur = prev.get(tuple(cur))
-        path.reverse()
-        return path
+            # Check neighboring roads from current road's connections
+            for neighbor_pos in current_road.neighbors:
+                next_tuple = tuple(neighbor_pos)
+                if next_tuple not in prev:
+                    prev[next_tuple] = cur_tuple
+                    Q.append(Vector2(neighbor_pos))
 
-    # ── jeep spawning ────────────────────────────────────────────────────
-    def _spawn_jeeps(self, n_jeeps: int):
-        """Distribute jeeps round-robin over available roads."""
-        for j_id in range(1, n_jeeps + 1):
-            road_idx = (j_id - 1) % len(self.entrances)
-            start, end = self.entrances[road_idx], self.exits[road_idx]
-            path = self._build_path(start, end)
+        # Find endpoints (road tiles with only one neighbor)
+        endpoints = []
+        for pos, road in road_map.items():
+            if pos in prev and len(road.neighbors) == 1 and pos != tuple(start):
+                endpoints.append(pos)
 
-            jeep = Jeep(j_id, start + Vector2(.5, .5))
+        # Find the longest path
+        longest_path = []
+        for end in endpoints:
+            path = []
+            cur = end
+            while cur is not None:
+                path.append(Vector2(cur[0], cur[1]))
+                cur = prev.get(cur)
+            path.reverse()
+
+            if len(path) > len(longest_path):
+                longest_path = path
+
+        return longest_path if longest_path else [start]
+
+    def _spawn_jeeps(self, n_jeeps: int = 5):
+        """Place jeeps at different entrances and find their longest paths."""
+        if not self.roads:
+            return
+
+        entrances = sorted(self.entrances, key=lambda p: p.y)[:n_jeeps]
+
+        for i, start in enumerate(entrances):
+            # Find path to nearest exit
+            path = self._build_path(start, Vector2(0, 0))  # Goal is dummy, we'll find longest path
+            if not path:
+                continue
+
+            jeep = Jeep(i + 1, Vector2(start))
+            jeep.board = self  # Set board reference
             jeep.set_path(path)
+            jeep.speed = 2.0
             self.jeeps.append(jeep)
 
     # ── update (called from GameController) ───────────────────────────────
     def update(self, dt: float, now: float):
-        for j in self.jeeps:
-            j.update(dt, now, self.jeeps)
+        for jeep in self.jeeps:
+            other_jeeps = [j for j in self.jeeps if j != jeep]
+            jeep.update(dt, now, other_jeeps)
 
     # ---------------------------------------------------------------------
     def __repr__(self):
