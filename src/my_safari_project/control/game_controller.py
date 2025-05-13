@@ -2,6 +2,9 @@
 
 import random
 from enum import Enum
+
+from my_safari_project.audio import play_jeep_start
+from my_safari_project.model.jeep import Jeep
 from pygame.math import Vector2
 
 # Model
@@ -286,4 +289,30 @@ class GameController:
     def enter_chip_mode(self):
         self.chip_placement_mode = True
         self.game_gui._feedback("Click an animal to tag with chip")
+
+    # ────────────────────────── jeep shop helper ─────────────────────────
+    def try_spawn_jeep(self, world_click: Vector2) -> bool:
+        if not self.capital.deductFunds(50):
+            return False                                  # not enough money
+
+        click_tile = Vector2(int(world_click.x), int(world_click.y))
+        # find exact road tile at that integer position
+        roads_here = [r for r in self.board.roads if r.pos == click_tile]
+        if not roads_here:
+            self.capital.addFunds(50)                     # refund
+            return False                                  # not on a road
+
+        # let the board figure out the longest path starting FROM THAT TILE
+        path = self.board._longest_path(click_tile)
+        if len(path) < 2:
+            self.capital.addFunds(50)                     # refund, unusable
+            return False
+
+        jeep = Jeep(len(self.board.jeeps) + 1, Vector2(path[0]))
+        jeep.board = self.board
+        jeep.set_path(path)
+        self.board.jeeps.append(jeep)
+        play_jeep_start()
+        return True
+
 

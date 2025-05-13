@@ -80,11 +80,13 @@ class GameGUI:
             {"name": "Giraffe", "cost": GIRAFFE_COST},
             {"name": "Hippo", "cost": HIPPO_COST},
             {"name": "Zebra", "cost": ZEBRA_COST},
+            {"name": "Jeep", "cost": 50, "type": "jeep"},
             {"name": "Straight H Road", "cost": 10, "type": "h_road"},
             {"name": "Straight V Road", "cost": 10, "type": "v_road"}
         ]
 
         self.dragging_road = None
+        self.dragging_jeep = False
         self.drag_start = None
 
         self.control: GameController = controller
@@ -171,62 +173,90 @@ class GameGUI:
         mouse_pos = pygame.mouse.get_pos()
 
         for ev in pygame.event.get():
+
+            # -----------------------------------------------------------------
+            #  LEFT-CLICK  (button 1)
+            # -----------------------------------------------------------------
             if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+
+                # --- zoom buttons --------------------------------------------
                 if self.btn_zoom_in.collidepoint(ev.pos):
+                    play_button_click()
                     self.board_gui.zoom(+1, ev.pos, BOARD_RECT)
-                    play_button_click()
+                    continue
                 elif self.btn_zoom_out.collidepoint(ev.pos):
-                    self.board_gui.zoom(-1, ev.pos, BOARD_RECT)
                     play_button_click()
-                elif BOARD_RECT.collidepoint(ev.pos) and self.dragging_road:
+                    self.board_gui.zoom(-1, ev.pos, BOARD_RECT)
+                    continue
+
+                # --- place a road segment (drag-and-drop) --------------------
+                if self.dragging_road and BOARD_RECT.collidepoint(ev.pos):
                     board_pos = self.board_gui.screen_to_board(ev.pos, BOARD_RECT)
                     x, y = int(board_pos.x), int(board_pos.y)
 
                     if self.control.capital.getBalance() >= 10:
-                        if self.control.board.add_road_segment(x, y, self.dragging_road["type"]):
+                        if self.control.board.add_road_segment(x, y,
+                                                               self.dragging_road["type"]):
                             self.control.capital.deductFunds(10)
                             play_place_item()
-                            self._feedback(f"Road placed for $10")
+                            self._feedback("Road placed for $10")
                         else:
                             play_insufficient_funds()
                             self._feedback("Cannot place road here!")
                     else:
                         play_insufficient_funds()
                         self._feedback("Insufficient funds!")
-                    self.dragging_road = None
 
                     self.dragging_road = None
-                elif BOARD_RECT.collidepoint(ev.pos):
+                    continue
+
+                # --- place a jeep (drag-and-drop) ----------------------------
+                if self.dragging_jeep and BOARD_RECT.collidepoint(ev.pos):
+                    board_pos = self.board_gui.screen_to_board(ev.pos, BOARD_RECT)
+                    placed = self.control.try_spawn_jeep(board_pos)
+                    if placed:
+                        play_purchase_success()
+                        self._feedback("Jeep purchased for $50")
+                    else:
+                        play_insufficient_funds()
+                        self._feedback("Must click on an existing road!")
+                    self.dragging_jeep = False
+                    continue
+
+                # --- start panning the camera --------------------------------
+                if BOARD_RECT.collidepoint(ev.pos):
                     self.board_gui.start_drag(ev.pos)
-                elif self.btn_zoom_in.collidepoint(ev.pos):
-                    self.board_gui.zoom(+1, ev.pos, BOARD_RECT)
-                    play_button_click()
-                elif self.btn_zoom_out.collidepoint(ev.pos):
-                    self.board_gui.zoom(-1, ev.pos, BOARD_RECT)
-                    play_button_click()
-                else:
-                    # Check shop items
-                    for i, r in enumerate(self.item_rects):
-                        if r.collidepoint(ev.pos):
-                            item = self.shop_items[i]
-                            if "type" in item:  # It's a road item
-                                self.dragging_road = item
-                                play_button_click()
-                            else:  # Regular shop item
-                                play_button_click()
-                                self._buy_item(i)
-                            break
+                    continue
 
+                # --- click in the shop ---------------------------------------
+                for i, r in enumerate(self.item_rects):
+                    if r.collidepoint(ev.pos):
+                        item = self.shop_items[i]
+                        play_button_click()
+
+                        if item.get("type") == "jeep":
+                            self.dragging_jeep = True  # start jeep drag
+                        elif item.get("type") in ("h_road", "v_road"):
+                            self.dragging_road = item  # start road drag
+                        else:
+                            self._buy_item(i)  # normal purchase
+                        break  # stop scanning items
+
+            # -----------------------------------------------------------------
+            #  BUTTON RELEASE
+            # -----------------------------------------------------------------
             elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
                 if self.board_gui._dragging:
                     self.board_gui.stop_drag()
                     self.auto_follow = False
 
+            # -----------------------------------------------------------------
+            #  MOUSE MOVE
+            # -----------------------------------------------------------------
             elif ev.type == pygame.MOUSEMOTION:
                 if self.board_gui._dragging:
                     self.board_gui.drag(ev.pos, BOARD_RECT)
                 else:
-                    prev_hover = self.hover_item
                     self.hover_item = next(
                         (i for i, r in enumerate(self.item_rects)
                          if r.collidepoint(ev.pos)),
