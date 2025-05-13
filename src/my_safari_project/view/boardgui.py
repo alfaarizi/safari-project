@@ -179,7 +179,7 @@ class BoardGUI:
         self.dn_opacity += (target_opacity - self.dn_opacity) * speed * dt * 60
         self.dn_opacity = max(0.0, min(1.0, self.dn_opacity))
 
-        self._night_active = self.dn_opacity == 1.0
+        self._night_active = target_opacity == 1.0
         self._cursor_pos = mouse_pos
 
 
