@@ -52,58 +52,67 @@ class GameGUI:
         self.screen = pygame.display.set_mode((SCREEN_W, SCREEN_H))
         pygame.display.set_caption("Safari – prototype")
 
+        self.auto_follow = False
+        self.feedback = ""
+        self.feedback_timer = 0
+        self.feedback_alpha = 0
+        self.last_day = -1
+        self.hover_item = -1
+        self.item_rects = []
+
+        self.font_small = pygame.font.Font(None, 24)
+        self.font_medium = pygame.font.Font(None, 32)
+
+        self.btn_zoom_in = pygame.Rect(0, 0, ZOOM_BTN_SZ, ZOOM_BTN_SZ)
+        self.btn_zoom_out = pygame.Rect(0, 0, ZOOM_BTN_SZ, ZOOM_BTN_SZ)
+
+
+        # Initialize shop items
+        self.shop_items = [
+            {"name": "Ranger", "cost": RANGER_COST},
+            {"name": "Plant", "cost": PLANT_COST},
+            {"name": "Pond", "cost": POND_COST},
+            {"name": "Hyena", "cost": HYENA_COST},
+            {"name": "Lion", "cost": LION_COST},
+            {"name": "Tiger", "cost": TIGER_COST},
+            {"name": "Buffalo", "cost": BUFFALO_COST},
+            {"name": "Elephant", "cost": ELEPHANT_COST},
+            {"name": "Giraffe", "cost": GIRAFFE_COST},
+            {"name": "Hippo", "cost": HIPPO_COST},
+            {"name": "Zebra", "cost": ZEBRA_COST},
+            {"name": "Straight H Road", "cost": 10, "type": "h_road"},
+            {"name": "Straight V Road", "cost": 10, "type": "v_road"}
+        ]
+
+        self.dragging_road = None
+        self.drag_start = None
+
         self.control: GameController = controller
         self.board_gui = BoardGUI(self.control.board)
         self.feedback_queue = []
 
+        # Set initial zoom to show full board
         self.board_gui.tile = self.board_gui.MIN_TILE
-        self.board_gui.cam = Vector2(
-                (controller.board.width - 1) / 2,
-                (controller.board.height - 1) / 2)
         self.full_tile = self.board_gui.tile
 
-        # Set viewport boundaries
+        # Initialize camera to show the full board
+        self.board_gui.cam = Vector2(
+            self.control.board.width / 2,  # Center the camera horizontally
+            self.control.board.height / 2  # Center the camera vertically
+        )
+
+        # Adjust viewport boundaries to match board dimensions
         self.board_gui.min_x = 0
-        self.board_gui.max_x = controller.board.width - 1
+        self.board_gui.max_x = controller.board.width
         self.board_gui.min_y = 0
-        self.board_gui.max_y = controller.board.height - 1
+        self.board_gui.max_y = controller.board.height
 
-        # Auto-follow flag (can be toggled with "F")
-        self.auto_follow = False
-
-        # Fonts
-        self.font_small  = pygame.font.SysFont("Verdana", 16)
-        self.font_medium = pygame.font.SysFont("Verdana", 20)
-        self.font_large  = pygame.font.SysFont("Verdana", 28, bold=True)
-
-        # zoom buttons (their pos is set every frame)
-        self.btn_zoom_in  = pygame.Rect(0, 0, ZOOM_BTN_SZ, ZOOM_BTN_SZ)
-        self.btn_zoom_out = pygame.Rect(0, 0, ZOOM_BTN_SZ, ZOOM_BTN_SZ)
-
-        # shop / feedback
-        self.feedback       = ""
-        self.feedback_timer = 0.0
-        self.feedback_alpha = 0
-        self.shop_items: List[dict] = [
-            {"name": "Ranger",   "cost": RANGER_COST},
-            {"name": "Plant",    "cost": PLANT_COST},
-            {"name": "Pond",     "cost": POND_COST},
-            {"name": "Hyena",    "cost": HYENA_COST},
-            {"name": "Lion",     "cost": LION_COST},
-            {"name": "Tiger",    "cost": TIGER_COST},
-            {"name": "Buffalo",  "cost": BUFFALO_COST},
-            {"name": "Elephant", "cost": ELEPHANT_COST},
-            {"name": "Giraffe",  "cost": GIRAFFE_COST},
-            {"name": "Hippo",    "cost": HIPPO_COST},
-            {"name": "Zebra",    "cost": ZEBRA_COST},
-            {"name": "Light Chip", "cost": CHIP_COST}
-        ]
-        self.item_rects: list[pygame.Rect] = []
-        self.hover_item = -1
-        
-        # Audio
-        self.last_day = -1
-        play_game_music()
+        # Calculate initial zoom to fit board width
+        board_width_pixels = BOARD_RECT.width
+        board_height_pixels = BOARD_RECT.height
+        width_ratio = board_width_pixels / controller.board.width
+        height_ratio = board_height_pixels / controller.board.height
+        self.board_gui.tile = min(width_ratio, height_ratio) * 0.9  # 90% to add some margin
 
         self.selected_poacher = None
         self.attack_button_rect = None
@@ -159,69 +168,35 @@ class GameGUI:
 
     # ─────────────────────────── event handling ──────────────────────────────
     def _handle_events(self):
+        mouse_pos = pygame.mouse.get_pos()
+
         for ev in pygame.event.get():
-            if ev.type == pygame.QUIT:
-                self.control.running = False
-            
-            elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_d:
-                    self.control.wildlife_ai.animal_ai.debug_mode = not self.control.wildlife_ai.animal_ai.debug_mode
-                    debug_status = "ON" if self.control.wildlife_ai.animal_ai.debug_mode else "OFF"
-                    self._feedback(f"Debug mode: {debug_status}")
-                    play_button_click()
-            
-            # ── toggle follow with “F” ─────────────────────────────
-            elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_f:
-                self.auto_follow = not self.auto_follow
-            
-            # ── mouse buttons ─────────────────────────────────────
-            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
-                if self.control.chip_placement_mode:
-                    world_pos = self.board_gui.screen_to_world(ev.pos)
-                    if world_pos:
-                        chip_placed = self.control.handle_chip_click(world_pos)
-                        if chip_placed:
-                            return 
-
-                # Check if clicking the attack button
-                if self.attack_button_rect and self.attack_button_rect.collidepoint(ev.pos):
-                    if self.selected_poacher and self.control.board.rangers:
-                        nearest = min(
-                            self.control.board.rangers,
-                            key=lambda r: r.position.distance_to(self.selected_poacher.position)
-                        )
-                        nearest.set_target(self.selected_poacher.position)
-                        nearest.assigned_poacher = self.selected_poacher
-                        self._feedback(f"Ranger {nearest.name} is attacking {self.selected_poacher.name}!")
-                    self.attack_button_rect = None
-                    self.selected_poacher = None
-                    return
-
-                # Clicked on the board?
-                if BOARD_RECT.collidepoint(ev.pos):
-                    world_pos = self.board_gui.screen_to_world(ev.pos)
-                    clicked_poacher = None
-                    for poacher in self.control.board.poachers:
-                        if poacher.visible and poacher.position.distance_to(world_pos) < 1.0:
-                            clicked_poacher = poacher
-                            break
-
-                    if clicked_poacher:
-                        self.selected_poacher = clicked_poacher
-                        self._feedback(f"Selected {clicked_poacher.name} at {tuple(map(int, clicked_poacher.position))}")
-                    else:
-                        # Clicked board but not on poacher → clear selection
-                        self.selected_poacher = None
-                        self.attack_button_rect = None
-
-                    self.board_gui.start_drag(ev.pos)
-
-                # UI buttons
+            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
                 if self.btn_zoom_in.collidepoint(ev.pos):
                     self.board_gui.zoom(+1, ev.pos, BOARD_RECT)
                     play_button_click()
                 elif self.btn_zoom_out.collidepoint(ev.pos):
                     self.board_gui.zoom(-1, ev.pos, BOARD_RECT)
                     play_button_click()
+                elif BOARD_RECT.collidepoint(ev.pos) and self.dragging_road:
+                    board_pos = self.board_gui.screen_to_board(ev.pos, BOARD_RECT)
+                    x, y = int(board_pos.x), int(board_pos.y)
+
+                    if self.control.capital.getBalance() >= 100:
+                        # Allow placement without board boundary checks
+                        if self.control.board.add_road_segment(x, y, self.dragging_road["type"]):
+                            self.control.capital.deductFunds(100)
+                            play_place_item()
+                            self._feedback(f"Road placed for $100")
+                        else:
+                            play_insufficient_funds()
+                            self._feedback("Cannot place road here!")
+                    else:
+                        play_insufficient_funds()
+                        self._feedback("Insufficient funds!")
+                    self.dragging_road = None
+
+                    self.dragging_road = None
                 elif BOARD_RECT.collidepoint(ev.pos):
                     self.board_gui.start_drag(ev.pos)
                 elif self.btn_zoom_in.collidepoint(ev.pos):
@@ -231,21 +206,25 @@ class GameGUI:
                     self.board_gui.zoom(-1, ev.pos, BOARD_RECT)
                     play_button_click()
                 else:
+                    # Check shop items
                     for i, r in enumerate(self.item_rects):
                         if r.collidepoint(ev.pos):
-                            play_button_click()
-                            self._buy_item(i)
+                            item = self.shop_items[i]
+                            if "type" in item:  # It's a road item
+                                self.dragging_road = item
+                                play_button_click()
+                            else:  # Regular shop item
+                                play_button_click()
+                                self._buy_item(i)
                             break
-
 
             elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
                 if self.board_gui._dragging:
                     self.board_gui.stop_drag()
-                    self.auto_follow = False   # user took manual control
-            
+                    self.auto_follow = False
+
             elif ev.type == pygame.MOUSEMOTION:
                 if self.board_gui._dragging:
-                    # continue panning
                     self.board_gui.drag(ev.pos, BOARD_RECT)
                 else:
                     prev_hover = self.hover_item
@@ -254,19 +233,14 @@ class GameGUI:
                          if r.collidepoint(ev.pos)),
                         -1
                     )
-                    # Play hover sound if hovering over a new item
-                    # (Uncomment if you have a hover sound)
-                    # if prev_hover != self.hover_item and self.hover_item != -1:
-                    #     play_hover_sound()
-
-            elif ev.type == pygame.MOUSEWHEEL:
-                self.board_gui.zoom(ev.y, pygame.mouse.get_pos(), BOARD_RECT)
-                # zoom counts as manual camera work
-                self.auto_follow = False
 
     # ───────────────────────────── shop logic ───────────────────────────────
     def _buy_item(self, index: int):
         item = self.shop_items[index]
+        # Skip road items
+        if "type" in item:
+            return
+
         if self.control.capital.deductFunds(item["cost"]):
             name = item["name"]
             if name == "Ranger":
@@ -284,9 +258,8 @@ class GameGUI:
             else:
                 self.control.spawn_animal(name.upper())
                 play_place_item()
-                # Play animal sound
                 play_animal_sound(name.lower())
-                
+
             play_purchase_success()
             self._feedback(f"Purchased {name} for ${item['cost']}")
         else:
@@ -303,6 +276,45 @@ class GameGUI:
     def _draw(self):
         self.screen.fill((40, 45, 50))
         self.board_gui.render(self.screen, BOARD_RECT)
+
+        if self.dragging_road and BOARD_RECT.collidepoint(pygame.mouse.get_pos()):
+            mouse_pos = pygame.mouse.get_pos()
+            board_pos = self.board_gui.screen_to_board(mouse_pos, BOARD_RECT)
+            x, y = int(board_pos.x), int(board_pos.y)
+
+            cells_to_preview = []
+            if self.dragging_road["type"] == "h_road":
+                if 0 <= y < self.control.board.height:
+                    start_x = x
+                    max_cells = min(10, self.control.board.width - start_x if start_x >= 0 else 10)
+                    for i in range(max_cells):
+                        cur_x = start_x + i
+                        if 0 <= cur_x < self.control.board.width:
+                            if any(r.pos == Vector2(cur_x, y) for r in self.control.board.roads):
+                                break
+                            cells_to_preview.append((cur_x, y))
+            else:  # v_road
+                if 0 <= x < self.control.board.width:
+                    start_y = y
+                    max_cells = min(10, self.control.board.height - start_y if start_y >= 0 else 10)
+                    for i in range(max_cells):
+                        cur_y = start_y + i
+                        if 0 <= cur_y < self.control.board.height:
+                            if any(r.pos == Vector2(x, cur_y) for r in self.control.board.roads):
+                                break
+                            cells_to_preview.append((x, cur_y))
+
+            # Draw preview cells
+            for cell_x, cell_y in cells_to_preview:
+                screen_pos = self.board_gui.board_to_screen(Vector2(cell_x, cell_y), BOARD_RECT)
+                preview_rect = pygame.Rect(
+                    int(screen_pos.x - self.board_gui.tile / 2),
+                    int(screen_pos.y - self.board_gui.tile / 2),
+                    int(self.board_gui.tile),
+                    int(self.board_gui.tile)
+                )
+                pygame.draw.rect(self.screen, (105, 105, 105, 128), preview_rect)
+                pygame.draw.rect(self.screen, (255, 255, 255), preview_rect, 1)
         self._draw_top_bar()
         self._draw_bottom_bar()
         self._draw_side_panel()
@@ -329,7 +341,6 @@ class GameGUI:
             self.screen.blit(label, label.get_rect(center=self.attack_button_rect.center))
 
         pygame.display.flip()
-
     # ---------------- top bar ------------------------------------------------
     def _draw_top_bar(self):
         margin, box_h, radius = 10, 30, 8

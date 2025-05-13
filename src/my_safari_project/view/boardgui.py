@@ -1,4 +1,3 @@
-# my_safari_project/view/boardgui.py
 from __future__ import annotations
 
 import os
@@ -15,43 +14,32 @@ from my_safari_project.model.timer import TIME_SCALE
 
 
 class BoardGUI:
-    """Draws a *scroll‐ and zoom‐able* viewport of a Board instance."""
     MIN_TILE = 4
     MAX_TILE = 64
 
     def __init__(self, board: Board, default_tile: int = 32):
         self.board = board
-        from my_safari_project.view.gamegui import BOARD_RECT, SCREEN_W, SCREEN_H
+        from my_safari_project.view.gamegui import BOARD_RECT
 
-        # Force minimum tile size to show entire board
-        self.tile = min(
-                        BOARD_RECT.width // self.board.width,
-                        BOARD_RECT.height // self.board.height)
+        # Basic initialization
+        self.tile = default_tile
+        self.MIN_TILE = 4
+        self.MAX_TILE = 64
 
-        self.tile = max(self.MIN_TILE, self.tile)
-
-        # Position camera to show entire board
         self.cam = Vector2(
-            (board.width - 1) / 2,  # Center X
-            (board.height - 1) / 2  # Center Y
+            board.width / 2,
+            board.height / 2
         )
 
-        # Set viewport boundaries
-        self.min_x = 0
-        self.max_x = board.width - 1
-        self.min_y = 0
-        self.max_y = board.height - 1
+        self._dragging = False
+        self._drag_start = Vector2(0, 0)
+        self._cam_at_drag = Vector2(self.cam)
 
-        # --- day/night ---------------------------------------------------
+        # Day/night cycle
         self._dn_enabled = True
         self._dn_timer = 0.0
         self._dn_period = 8 * 60
         self.dn_opacity = 0.0
-
-        # --- dragging state ---------------------------------------------
-        self._dragging = False
-        self._drag_start = Vector2(0, 0)
-        self._cam_at_drag = Vector2(self.cam)
 
         # --- load all images --------------------------------------------
         self._load_assets()
@@ -101,22 +89,12 @@ class BoardGUI:
         self._cam_at_drag = Vector2(self.cam)
 
     def drag(self, pos: tuple[int, int], bounds: pygame.Rect) -> None:
-        """Handle drag movement, keeping within board boundaries."""
         if not self._dragging:
             return
 
         offset = Vector2(pos) - self._drag_start
-        new_cam = self._cam_at_drag - offset / self.tile
 
-        # Clamp to board boundaries
-        board_width = self.board.width
-        board_height = self.board.height
-
-        # Allow half-tile margin on each side
-        new_cam.x = max(0.5, min(board_width - 0.5, new_cam.x))
-        new_cam.y = max(0.5, min(board_height - 0.5, new_cam.y))
-
-        self.cam = new_cam
+        self.cam = self._cam_at_drag - offset / self.tile
 
     def stop_drag(self):
         """End panning without snapping back."""
@@ -214,8 +192,8 @@ class BoardGUI:
         ox = rect.centerx - int((self.cam.x - min_x) * side)
         oy = rect.centery - int((self.cam.y - min_y) * side)
 
-        vis_w = max_x - min_x
-        vis_h = max_y - min_y
+        vis_w = int(max_x - min_x)
+        vis_h = int(max_y - min_y)
 
         visible_map = None
         world_x = world_y = 0
@@ -319,45 +297,22 @@ class BoardGUI:
             ov.fill(tint)
             screen.blit(ov, (ox, oy))
 
+    def screen_to_board(self, screen_pos, rect):
+        rel_x = screen_pos[0] - rect.centerx
+        rel_y = screen_pos[1] - rect.centery
 
-     # Spotlight effect
-        if self.dn_opacity > 0.6:
-            spotlight = pygame.Surface(screen.get_size(), pygame.SRCALPHA)
-            spotlight.fill((0, 0, 0, 0))  # fully transparent base
+        # Convert to board coordinates using camera position and zoom
+        board_x = self.cam.x + (rel_x / self.tile)
+        board_y = self.cam.y + (rel_y / self.tile)
 
-            # Get mouse position directly
-            mx, my = self._cursor_pos  # Already stored each frame
-            pygame.draw.circle(
-                spotlight, (0, 0, 0, 220),
-                (mx, my),  # directly use mouse screen position
-                60  # radius in pixels (adjust as needed)
-            )
+        return Vector2(board_x, board_y)
 
-            spotlight.set_colorkey((0, 0, 0))
-            screen.blit(spotlight, (0, 0), special_flags=pygame.BLEND_RGBA_SUB)
+    def board_to_screen(self, board_pos, rect):
+        rel_x = (board_pos.x - self.cam.x) * self.tile
+        rel_y = (board_pos.y - self.cam.y) * self.tile
 
+        # Convert to screen coordinates
+        screen_x = rect.centerx + rel_x
+        screen_y = rect.centery + rel_y
 
-    def get_animal_at(self, world_pos: Vector2, radius: float = 1.5) -> Animal:
-        """Return the first animal within a given radius of the clicked world position."""
-        for animal in self.board.animals:
-            if animal.is_alive and animal.position.distance_to(world_pos) <= radius:
-                return animal
-        return None
-
-
-
-    def screen_to_world(self, screen_pos: tuple[int, int]) -> Vector2:
-        """Convert screen (pixel) coordinates to world (tile) coordinates."""
-        from my_safari_project.view.gamegui import BOARD_RECT
-        mx, my = screen_pos
-        if not BOARD_RECT.collidepoint(mx, my):
-            return None  # Outside the board area
-
-        # Convert from screen to world based on camera and tile size
-        offset_x = BOARD_RECT.centerx
-        offset_y = BOARD_RECT.centery
-        rel_x = (mx - offset_x) / self.tile
-        rel_y = (my - offset_y) / self.tile
-        world_x = self.cam.x + rel_x
-        world_y = self.cam.y + rel_y
-        return Vector2(world_x, world_y)
+        return Vector2(screen_x, screen_y)
