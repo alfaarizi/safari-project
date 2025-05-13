@@ -5,6 +5,7 @@ from collections import deque
 from typing import List
 from pygame.math import Vector2
 
+
 from my_safari_project.model.animal import Animal
 from my_safari_project.model.field import Field
 from my_safari_project.model.road  import Road, RoadType
@@ -139,6 +140,7 @@ class Board:
         if road_type in road_type_map:
             road = Road(Vector2(x, y), road_type_map[road_type])
             self.roads.append(road)
+            self._stitch_into_network(road)
             return True
 
         return False
@@ -177,6 +179,7 @@ class Board:
         for cell_x, cell_y in cells_to_check:
             new_road = Road(Vector2(cell_x, cell_y), road_type_map[road_type])
             self.roads.append(new_road)
+            self._stitch_into_network(new_road)
 
             if prev_road:
                 prev_road.add_neighbor(new_road.pos)
@@ -188,48 +191,41 @@ class Board:
         return True
 
     # ── path helper ───────────────────────────────────────────────────────
-    def _build_path(self, start: Vector2, goal: Vector2) -> list[Vector2]:
+    def _longest_path(self, start: Vector2) -> list[Vector2]:
+        """
+        Return the longest simple (no repeated tiles) path that starts at the
+        *road tile nearest `start`* and finishes on **any road end-point**
+        (a tile that has exactly one neighbour).
+        """
+        if not self.roads:
+                return [start]
+
         road_map = {tuple(r.pos): r for r in self.roads}
-        nearest_start = min(road_map.keys(),
-                            key=lambda pos: Vector2(pos).distance_to(start))
 
-        start = Vector2(nearest_start)
-        Q = deque([start])
-        prev = {tuple(start): None}
+        # snap ‘start’ to the nearest road-tile centre
+        snap = min(road_map.keys(),
+                        key=lambda p: Vector2(p).distance_to(start))
+        snap_v = Vector2(snap)
 
-        # Find all possible paths
+        # breadth-first search that stores whole paths so we can compare
+        Q = deque([[snap_v]])
+        longest = [snap_v]
+
         while Q:
-            cur = Q.popleft()
-            cur_tuple = tuple(cur)
-            current_road = road_map[cur_tuple]
+                path = Q.popleft()
+                head = path[-1]
+                head_road = road_map[tuple(head)]
 
-            # Check neighboring roads from current road's connections
-            for neighbor_pos in current_road.neighbors:
-                next_tuple = tuple(neighbor_pos)
-                if next_tuple not in prev:
-                    prev[next_tuple] = cur_tuple
-                    Q.append(Vector2(neighbor_pos))
+                # if we’re at an end-point AND longer than what we have, keep it
+                if len(head_road.neighbors) == 1 and len(path) > len(longest):
+                        longest = path
 
-        # Find endpoints (road tiles with only one neighbor)
-        endpoints = []
-        for pos, road in road_map.items():
-            if pos in prev and len(road.neighbors) == 1 and pos != tuple(start):
-                endpoints.append(pos)
+                for nbr in head_road.neighbors:
+                        if nbr not in path:                        # no cycles / repeats
+                                Q.append(path + [Vector2(nbr)])
 
-        # Find the longest path
-        longest_path = []
-        for end in endpoints:
-            path = []
-            cur = end
-            while cur is not None:
-                path.append(Vector2(cur[0], cur[1]))
-                cur = prev.get(cur)
-            path.reverse()
+        return longest
 
-            if len(path) > len(longest_path):
-                longest_path = path
-
-        return longest_path if longest_path else [start]
 
     def _spawn_jeeps(self, n_jeeps: int = 5):
         """Place jeeps at different entrances and find their longest paths."""
@@ -240,7 +236,7 @@ class Board:
 
         for i, start in enumerate(entrances):
             # Find path to nearest exit
-            path = self._build_path(start, Vector2(0, 0))  # Goal is dummy, we'll find longest path
+            path = self._longest_path(start)
             if not path:
                 continue
 
@@ -255,6 +251,20 @@ class Board:
         for jeep in self.jeeps:
             other_jeeps = [j for j in self.jeeps if j != jeep]
             jeep.update(dt, now, other_jeeps)
+
+    # ------------------------------------------------------------------
+    def _stitch_into_network(self, road: Road):
+        """Link <road> to any existing road that touches it orthogonally."""
+        for other in self.roads:
+            if other is road:                # ignore self
+                continue
+            dx = int(other.pos.x - road.pos.x)
+            dy = int(other.pos.y - road.pos.y)
+            touching = (abs(dx) == 1 and dy == 0) or (abs(dy) == 1 and dx == 0)
+            if touching:
+                road.add_neighbor(other.pos)
+                other.add_neighbor(road.pos)
+
 
     # ---------------------------------------------------------------------
     def __repr__(self):

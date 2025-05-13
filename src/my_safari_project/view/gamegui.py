@@ -182,12 +182,11 @@ class GameGUI:
                     board_pos = self.board_gui.screen_to_board(ev.pos, BOARD_RECT)
                     x, y = int(board_pos.x), int(board_pos.y)
 
-                    if self.control.capital.getBalance() >= 100:
-                        # Allow placement without board boundary checks
+                    if self.control.capital.getBalance() >= 10:
                         if self.control.board.add_road_segment(x, y, self.dragging_road["type"]):
-                            self.control.capital.deductFunds(100)
+                            self.control.capital.deductFunds(10)
                             play_place_item()
-                            self._feedback(f"Road placed for $100")
+                            self._feedback(f"Road placed for $10")
                         else:
                             play_insufficient_funds()
                             self._feedback("Cannot place road here!")
