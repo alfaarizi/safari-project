@@ -85,4 +85,7 @@ class Field:
             f"terrain={self.terrain_type}, elev={self.elevation}, "
             f"obstacle={self.is_obstacle}, objects={len(self.objects_on_field)})"
         )
+    def recalculate_walkable(self):
+        self.walkable = not self.is_obstacle and self.terrain_type != "WATER"
+
 

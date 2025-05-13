@@ -53,9 +53,11 @@ class GameGUI:
         pygame.display.set_caption("Safari – prototype")
 
         self.control: GameController = controller
-        self.board_gui = BoardGUI(self.control.board)
+        #self.board_gui = BoardGUI(self.control.board)
+        tile_w = BOARD_RECT.width // self.control.board.width  
+        self.board_gui = BoardGUI(self.control.board, default_tile=tile_w)
 
-        self.board_gui.tile = self.board_gui.MIN_TILE
+        #self.board_gui.tile = self.board_gui.MIN_TILE
         self.board_gui.cam = Vector2(
                 (controller.board.width - 1) / 2,
                 (controller.board.height - 1) / 2)
@@ -97,11 +99,25 @@ class GameGUI:
             {"name": "Zebra",    "cost": ZEBRA_COST},
         ]
         self.item_rects: list[pygame.Rect] = []
+        #added for (hover/highlight) ,it lays out the clickable buttons for the shop
+        px, py = SCREEN_W - SIDE_PANEL_W, TOP_BAR_H
+        y  = py + 50
+        for _ in self.shop_items:
+            self.item_rects.append(
+                pygame.Rect(px + 20, y, SIDE_PANEL_W - 40, 36)
+            )
+            y += 44
         self.hover_item = -1
         
         # Audio
         self.last_day = -1
         play_game_music()
+
+        #drag state
+        self.drag_item_idx = -1
+        self.drag_pos      = (0,0)
+        self.hover_tile    = None
+        self.hover_valid   = False
 
     # ───────────────────────────── public API ────────────────────────────────
     def update(self, dt: float):
@@ -132,6 +148,12 @@ class GameGUI:
             self.feedback_alpha = int(255 * min(1.0, self.feedback_timer * 2))
         else:
             self.feedback_alpha = 0
+        
+         #  added: show hand cursor while dragging a shop item ----
+        if self.drag_item_idx >= 0:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_HAND)
+        else:
+            pygame.mouse.set_cursor(pygame.SYSTEM_CURSOR_ARROW)
 
             
     def _check_day_transition(self):
@@ -170,31 +192,99 @@ class GameGUI:
                 elif self.btn_zoom_out.collidepoint(ev.pos):
                     self.board_gui.zoom(-1, ev.pos, BOARD_RECT)
                     play_button_click()
-                elif BOARD_RECT.collidepoint(ev.pos):
-                    self.board_gui.start_drag(ev.pos)
+                #elif BOARD_RECT.collidepoint(ev.pos):
+                    #self.board_gui.start_drag(ev.pos)
+                elif BOARD_RECT.collidepoint(ev.pos) and self.drag_item_idx < 0 :
+                     # only pan the map if we’re NOT currently dragging a shop item
+                     self.board_gui.start_drag(ev.pos)
+                
                 else:
-                    for i, r in enumerate(self.item_rects):
-                        if r.collidepoint(ev.pos):
-                            play_button_click
-                            self._buy_item(i)
+                    # for i, r in enumerate(self.item_rects):
+                    #     if r.collidepoint(ev.pos):
+                    #         play_button_click
+                    #         self._buy_item(i)
+                    #         break
+                    for i, rect in enumerate(self.item_rects):
+                        if rect.collidepoint(ev.pos):
+                            #  stop any camera pan that might have started ──
+                            self.board_gui._dragging = False
+                            # play click sound for shop entry
+                            play_button_click()
+                            self.drag_item_idx = i
+                            self.drag_pos      = ev.pos
+                            self.hover_tile    = None
+                            self.hover_valid   = False
                             break
             
             elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
+                # if self.board_gui._dragging:
+                #     self.board_gui.stop_drag()
+                #     self.auto_follow = False   # user took manual control
+
+                if self.drag_item_idx >= 0:
+                    # store release-point tile and reuse
+                    self.hover_tile = self.board_gui.screen_to_tile(ev.pos, BOARD_RECT) # here we Convert cursor position to board tile and check if that tile is valid
+                    self.hover_valid = bool(
+                        self.hover_tile
+                        and self.control.board.is_placeable(self.hover_tile)
+                    )
+
+                    if self.hover_valid:
+                        i    = self.drag_item_idx
+                        item = self.shop_items[i]
+                        cost = item["cost"]
+                        if self.control.deduct_funds(cost):
+                            name = item["name"]
+                            # play placement sound first after the successfull drop
+                            play_place_item()
+                            match name:
+                                case "Ranger": self.control.spawn_ranger(self.hover_tile)
+                                case "Plant":  self.control.spawn_plant(self.hover_tile)
+                                case "Pond":   self.control.spawn_pond(self.hover_tile)
+                                case _:         
+                                    self.control.spawn_animal(name.upper(), self.hover_tile)
+                                    play_animal_sound(name.lower())
+                            play_purchase_success()
+                            self._feedback(f"Placed {name} for ${cost}")
+                        else:
+                            self._feedback("Insufficient funds!")
+                    else:
+                        self._feedback("Invalid placement!")
+  
+
+                    # reset drag state
+                    self.drag_item_idx = -1
+                    self.hover_tile    = None
+                    self.hover_valid   = False
+
+                # still allow panning to stop
                 if self.board_gui._dragging:
                     self.board_gui.stop_drag()
-                    self.auto_follow = False   # user took manual control
+                    self.auto_follow = False  # user took manual control
             
             elif ev.type == pygame.MOUSEMOTION:
+                # 1. keep panning if the camera is being dragged
                 if self.board_gui._dragging:
-                    # continue panning
                     self.board_gui.drag(ev.pos, BOARD_RECT)
-                else:
-                    prev_hover = self.hover_item
-                    self.hover_item = next(
-                        (i for i, r in enumerate(self.item_rects)
-                         if r.collidepoint(ev.pos)),
-                        -1
-                    )
+
+                # 2. always update hover & drag information
+                prev_hover   = self.hover_item
+                self.hover_item = next(
+                    (i for i, r in enumerate(self.item_rects) if r.collidepoint(ev.pos)),
+                    -1
+                )
+
+                if self.drag_item_idx >= 0:            # dragging something from the shop
+                    self.drag_pos     = ev.pos # for the ghost
+                    tile              = self.board_gui.screen_to_tile(ev.pos, BOARD_RECT)
+                    self.hover_tile  = tile
+                    self.hover_valid = bool(tile and
+                                self.control.board.is_placeable(tile))
+                
+                #for debugging
+                # tile = self.board_gui.screen_to_tile(ev.pos, BOARD_RECT)
+                # print("mouse", ev.pos, "→ tile", tile)
+
                     # Play hover sound if hovering over a new item
                     # (Uncomment if you have a hover sound)
                     # if prev_hover != self.hover_item and self.hover_item != -1:
@@ -237,13 +327,50 @@ class GameGUI:
 
     # ───────────────────────────── drawing ───────────────────────────────────
     def _draw(self):
+        # 1) clear & render board + UI panels
         self.screen.fill((40, 45, 50))
-        self.board_gui.render(self.screen, BOARD_RECT)
+        self.board_gui.render(
+                self.screen,
+                BOARD_RECT,
+                hover_tile  = self.hover_tile if self.drag_item_idx >= 0 else None,
+                hover_valid = self.hover_valid
+            )
         self._draw_top_bar()
         self._draw_bottom_bar()
         self._draw_side_panel()
         self._draw_feedback()
         self._draw_zoom_buttons()
+
+        # 2) ghost‐sprite follows cursor while dragging
+        if self.drag_item_idx >= 0:
+            name = self.shop_items[self.drag_item_idx]["name"].lower()
+            img  = (getattr(self.board_gui, name)
+                    if name in ("plant", "pond", "ranger") else
+                    self.board_gui.animals[
+                        __import__("my_safari_project.model.animal",
+                                fromlist=["AnimalSpecies"]).AnimalSpecies[name.upper()].value
+                    ])
+
+            size  = max(20, self.board_gui.tile)  # Make it at least visible when small
+            ghost = pygame.transform.scale(img, (size, size))
+            ghost.set_alpha(150)
+
+            if self.hover_tile is not None:
+                gx, gy = self.hover_tile
+                # correct calculation:
+                px = (BOARD_RECT.centerx +
+                    (gx - self.board_gui.cam.x) * self.board_gui.tile -
+                    size // 2)
+                py = (BOARD_RECT.centery +
+                    (gy - self.board_gui.cam.y) * self.board_gui.tile -
+                    size // 2)
+            else:
+                # fallback raw mouse position
+                mx, my = self.drag_pos
+                px, py = mx - size // 2, my - size // 2
+
+            self.screen.blit(ghost, (px, py))
+        # 3) finally update the display
         pygame.display.flip()
 
     # ---------------- top bar ------------------------------------------------
@@ -313,11 +440,10 @@ class GameGUI:
         title = self.font_medium.render("Shop", True, (255,255,255))
         self.screen.blit(title, (px + 20, py + 10))
 
-        self.item_rects.clear()
+        #self.item_rects.clear()
         y = py + 50
         for i, item in enumerate(self.shop_items):
-            rect = pygame.Rect(px + 20, y, SIDE_PANEL_W - 40, 36)
-            self.item_rects.append(rect)
+            rect = self.item_rects[i]
             colour = (80,110,160) if i == self.hover_item else (90,100,120)
             pygame.draw.rect(self.screen, colour, rect, border_radius=4)
             txt = self.font_small.render(f"{item['name']}: ${item['cost']}",

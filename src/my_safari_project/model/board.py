@@ -26,6 +26,10 @@ class Board:
             [Field(Vector2(x, y)) for x in range(width)]
             for y in range(height)
         ]
+        #added to Make sure the freshly-created grid is coherent
+        # for row in self.fields:
+        #     for field in row:
+        #         field.recalculate_walkable()
 
         # centre-left / centre-right entrances for every road
         self.entrances: list[Vector2] = []
@@ -106,6 +110,11 @@ class Board:
         t1, t2 = get_or_create(cur), get_or_create(nxt)
         t1.add_neighbor(t2.pos)
         t2.add_neighbor(t1.pos)
+        # added to mark the underlying field as road & non-walkable
+        fx, fy = int(cur.x), int(cur.y)
+        fld = self.fields[fy][fx]
+        fld.terrain_type = "ROAD"
+        fld.set_obstacle(True)
 
     # ── path helper ───────────────────────────────────────────────────────
     def _build_path(self, start: Vector2, goal: Vector2) -> list[Vector2]:
@@ -154,3 +163,30 @@ class Board:
     # ---------------------------------------------------------------------
     def __repr__(self):
         return f"<Board {self.width}×{self.height} roads={len(self.roads)} jeeps={len(self.jeeps)}>"
+     
+    def is_blocked(self, tile: Vector2) -> bool:
+        """True if any road or item already occupies this tile."""
+        tx, ty = int(tile.x), int(tile.y)
+        field = self.fields[ty][tx]
+
+        if field.is_obstacle or not field.walkable:
+            return True
+        
+        return field.is_occupied()
+
+    def is_placeable(self, tile: Vector2) -> bool:
+        """Only on‐board, walkable (grass) tiles with no road or other object."""
+        tx, ty = int(tile.x), int(tile.y)
+        # must be on‐board
+        # if not (0 <= tx < self.width and 0 <= ty < self.height):
+        #     print(f"[is_placeable] {tx,ty} → OFF BOARD")
+        #     return False                 # off the world
+        # Get the field at this position
+        field = self.fields[ty][tx]
+        # print(f"[is_placeable] {tx,ty} → walkable={field.walkable} occupied={field.is_occupied()}")
+        
+        if not field.walkable:
+            return False                 # water / obstacle
+        if self.is_blocked(tile):
+            return False                 # road or existing entity
+        return True                     # empty grass

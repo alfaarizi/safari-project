@@ -6,9 +6,10 @@ import pygame
 from pygame import Surface, Rect
 from pygame.math import Vector2
 from typing import Tuple
-
+from pygame import Rect
 from my_safari_project.model.board import Board
 from my_safari_project.model.road  import Road
+
 
 
 class BoardGUI:
@@ -20,11 +21,14 @@ class BoardGUI:
         self.board = board
         from my_safari_project.view.gamegui import BOARD_RECT, SCREEN_W, SCREEN_H
 
-        # Force minimum tile size to show entire board
-        self.tile = min(
-                        BOARD_RECT.width // self.board.width,
-                        BOARD_RECT.height // self.board.height)
-
+        if default_tile is not None:
+            self.tile = default_tile
+        else:
+            # fall back to the “fit‐to‐screen” logic
+            self.tile = min(
+                BOARD_RECT.width  // board.width,
+                BOARD_RECT.height // board.height
+            )
         self.tile = max(self.MIN_TILE, self.tile)
 
         # Position camera to show entire board
@@ -52,7 +56,7 @@ class BoardGUI:
 
         # --- load all images --------------------------------------------
         self._load_assets()
-
+    
 
     # ─── asset loading ────────────────────────────────────────────────
     def _load_img(self, root: str, name: str, alpha=True) -> Surface:
@@ -162,7 +166,8 @@ class BoardGUI:
               c2: Tuple[int,int,int,int], t: float) -> Tuple[int,int,int,int]:
         return tuple(int(a + (b - a)*t) for a,b in zip(c1, c2))
 
-    def render(self, screen: Surface, rect: Rect):
+    def render(self,screen: Surface,rect: Rect,*,hover_tile: Vector2 | None = None, 
+        hover_valid: bool = False ) -> None:
         if self.board.width == 0 or self.board.height == 0:
             return
 
@@ -222,7 +227,7 @@ class BoardGUI:
             x, y = p.position
             if min_x <= x < max_x and min_y <= y < max_y:
                 px = ox + int((x - min_x) * side)
-                py = oy + int((y - min_y) * side - (gh - side))
+                py = oy + int((y - min_y) * side - (gh - side) ) 
                 screen.blit(
                     pygame.transform.scale(self.plant, (gw, gh)),
                     (px, py)
@@ -280,9 +285,42 @@ class BoardGUI:
             y = oy + r * side
             pygame.draw.line(screen, grid_col, (ox, y), (ox + vis_w * side, y), 1)
 
+        # ---------- hover highlight  -------------------------------
+        if hover_tile is not None:
+            tx, ty = int(hover_tile.x), int(hover_tile.y) # informs the renderer which board square the mouse is over
+            # only draw if in our vis window:
+            if min_x <= tx < max_x and min_y <= ty < max_y:
+                px = ox + int((tx - min_x) * side)
+                py = oy + int((ty - min_y) * side)
+                # create a transparent surface
+                overlay = pygame.Surface((side, side), pygame.SRCALPHA)
+                color = (0,200,0,100) if hover_valid else (200,0,0,100) 
+                overlay.fill(color)
+                screen.blit(overlay, (px, py))
+
         # ---------- day / night overlay ----------------------------
         if self.dn_opacity > 0:
             tint = self._lerp((255,255,255,0), (0,0,70,160), self.dn_opacity)
             ov   = pygame.Surface((vis_w * side, vis_h * side), pygame.SRCALPHA)
             ov.fill(tint)
             screen.blit(ov, (ox, oy))
+
+
+    def screen_to_tile(
+        self,
+        screen_pos: Tuple[int, int],
+        board_rect: Rect
+    ) -> Vector2 | None:
+        """Map a screen (px,py) inside board_rect to a board‐tile (x,y)."""
+        mx, my = screen_pos
+        if not board_rect.collidepoint(mx, my):
+            return None
+        # offset in tiles from center
+        dx = (mx - board_rect.centerx) / self.tile
+        dy = (my - board_rect.centery) / self.tile
+        wx = self.cam.x + dx
+        wy = self.cam.y + dy
+        tx, ty = int(wx), int(wy)
+        if 0 <= tx < self.board.width and 0 <= ty < self.board.height:
+            return Vector2(tx, ty)
+        return None

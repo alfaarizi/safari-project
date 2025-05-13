@@ -149,27 +149,38 @@ class GameController:
             random.randint(0, self.board.height - 1)
         )
 
-    def spawn_ranger(self):
+    def spawn_ranger(self, position: Vector2 | None = None):
         rid = len(self.board.rangers) + 1
-        self.board.rangers.append(
-            Ranger(rid, f"R{rid}", 50, self._random_tile())
-        )
+        pos = position if position is not None else self._random_tile()
+        tx, ty = int(pos.x), int(pos.y)
+        ranger = Ranger(rid, f"R{rid}", 50, pos)
+        self.board.fields[ty][tx].add_object(ranger)
+        self.board.rangers.append(ranger)
+    
 
-    def spawn_plant(self):
+    def spawn_plant(self, position : Vector2 | None = None):
         from my_safari_project.model.plant import Plant
         pid = len(self.board.plants) + 1
-        self.board.plants.append(
-            Plant(pid, self._random_tile())
-        )
+        pos = position if position is not None else self._random_tile()
+        tx, ty = int(pos.x), int(pos.y)
 
-    def spawn_pond(self):
+        plant = Plant(pid, pos)
+        self.board.fields[ty][tx].add_object(plant)
+        self.board.plants.append(plant)
+
+
+    def spawn_pond(self, position : Vector2 | None = None ):
         from my_safari_project.model.pond import Pond
         pid = len(self.board.ponds) + 1
-        self.board.ponds.append(
-            Pond(pid, self._random_tile())
-        )
+        pos = position if position is not None else self._random_tile()
+        tx, ty = int(pos.x), int(pos.y)
 
-    def spawn_animal(self, species_name: str):
+        pond = Pond(pid, pos)
+        self.board.fields[ty][tx].add_object(pond)
+        self.board.ponds.append(pond)
+
+
+    def spawn_animal(self, species_name: str, position: Vector2 | None = None):
         import random
         from my_safari_project.model.animal    import AnimalSpecies
         from my_safari_project.model.carnivore import Carnivore
@@ -187,22 +198,28 @@ class GameController:
         }
         species = getattr(AnimalSpecies, species_name.upper())
         cls, spd, val, life = props[species]
-        self.board.animals.append(
-            cls(
-                animal_id  = len(self.board.animals) + 1,
-                species    = species,
-                position   = self._random_tile(),
-                speed      = spd,
-                value      = val,
-                lifespan   = life
-            )
+        pos = position if position is not None else self._random_tile()
+        tx, ty = int(pos.x), int(pos.y)
+
+
+        animal = cls(
+            animal_id = len(self.board.animals)+1,
+            species   = species,
+            position  = pos,
+            speed     = spd,
+            value     = val,
+            lifespan  = life
         )
+        self.board.animals.append(animal)
+        self.board.fields[ty][tx].add_object(animal)
 
     def spawn_poacher(self):
         pid = len(self.board.poachers) + 1
         p   = Poacher(pid, f"P{pid}", position=self._random_tile())
         p.choose_random_target(self.board.width, self.board.height)
         self.board.poachers.append(p)
+        # tx, ty = int(p.position.x), int(p.position.y)
+        # self.board.fields[ty][tx].add_object(p)
 
     # ─────────────────────── Game State Logic ─────────────────────────
     def start_game(self):
