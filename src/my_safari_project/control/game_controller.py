@@ -100,7 +100,7 @@ class GameController:
         self.game_gui = GameGUI(self)
 
         # ─── AI / helpers ────────────────────────────────────────
-        self.wildlife_ai = WildlifeAI(self.board, self.capital)
+        self.wildlife_ai = WildlifeAI(self.board, self.capital, feedback_callback=self.game_gui._feedback)
         self._poacher_timer = 0.0
 
         self.visible_animals_night = set()
@@ -151,14 +151,11 @@ class GameController:
 
         # 3) rangers
         for r in self.board.rangers:
-            visible = [p for p in self.board.poachers if p.is_visible_to(r)]
-            if visible:
-                tgt = min(visible, key=lambda p: r.position.distance_to(p.position))
-                r.chase_poacher(tgt)
-                if r.eliminate_poacher(tgt):
-                    self.capital.addFunds(50)
-            else:
-                r.patrol(self.board.width, self.board.height)
+            result = r.update(dt, self.board)
+            if result == "poacher_eliminated":
+                self.capital.addFunds(50)
+                self.game_gui._feedback("Poacher eliminated! +$50")
+
 
     # ───────────────────────── Spawning Helpers ──────────────────────────
     def _random_tile(self):

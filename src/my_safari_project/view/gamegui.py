@@ -54,6 +54,7 @@ class GameGUI:
 
         self.control: GameController = controller
         self.board_gui = BoardGUI(self.control.board)
+        self.feedback_queue = []
 
         self.board_gui.tile = self.board_gui.MIN_TILE
         self.board_gui.cam = Vector2(
@@ -104,6 +105,10 @@ class GameGUI:
         self.last_day = -1
         play_game_music()
 
+        self.selected_poacher = None
+        self.attack_button_rect = None
+
+
     # ───────────────────────────── public API ────────────────────────────────
     def update(self, dt: float):
         """Called every frame by your main loop."""
@@ -134,7 +139,10 @@ class GameGUI:
             self.feedback_timer -= dt
             self.feedback_alpha = int(255 * min(1.0, self.feedback_timer * 2))
         else:
-            self.feedback_alpha = 0
+            if self.feedback_queue:
+                self._pop_next_feedback()
+            else:
+                self.feedback_alpha = 0
 
             
     def _check_day_transition(self):
@@ -174,6 +182,40 @@ class GameGUI:
                         if chip_placed:
                             return 
 
+                # Check if clicking the attack button
+                if self.attack_button_rect and self.attack_button_rect.collidepoint(ev.pos):
+                    if self.selected_poacher and self.control.board.rangers:
+                        nearest = min(
+                            self.control.board.rangers,
+                            key=lambda r: r.position.distance_to(self.selected_poacher.position)
+                        )
+                        nearest.set_target(self.selected_poacher.position)
+                        nearest.assigned_poacher = self.selected_poacher
+                        self._feedback(f"Ranger {nearest.name} is attacking {self.selected_poacher.name}!")
+                    self.attack_button_rect = None
+                    self.selected_poacher = None
+                    return
+
+                # Clicked on the board?
+                if BOARD_RECT.collidepoint(ev.pos):
+                    world_pos = self.board_gui.screen_to_world(ev.pos)
+                    clicked_poacher = None
+                    for poacher in self.control.board.poachers:
+                        if poacher.visible and poacher.position.distance_to(world_pos) < 1.0:
+                            clicked_poacher = poacher
+                            break
+
+                    if clicked_poacher:
+                        self.selected_poacher = clicked_poacher
+                        self._feedback(f"Selected {clicked_poacher.name} at {tuple(map(int, clicked_poacher.position))}")
+                    else:
+                        # Clicked board but not on poacher → clear selection
+                        self.selected_poacher = None
+                        self.attack_button_rect = None
+
+                    self.board_gui.start_drag(ev.pos)
+
+                # UI buttons
                 if self.btn_zoom_in.collidepoint(ev.pos):
                     self.board_gui.zoom(+1, ev.pos, BOARD_RECT)
                     play_button_click()
@@ -182,12 +224,19 @@ class GameGUI:
                     play_button_click()
                 elif BOARD_RECT.collidepoint(ev.pos):
                     self.board_gui.start_drag(ev.pos)
+                elif self.btn_zoom_in.collidepoint(ev.pos):
+                    self.board_gui.zoom(+1, ev.pos, BOARD_RECT)
+                    play_button_click()
+                elif self.btn_zoom_out.collidepoint(ev.pos):
+                    self.board_gui.zoom(-1, ev.pos, BOARD_RECT)
+                    play_button_click()
                 else:
                     for i, r in enumerate(self.item_rects):
                         if r.collidepoint(ev.pos):
                             play_button_click()
                             self._buy_item(i)
                             break
+
 
             elif ev.type == pygame.MOUSEBUTTONUP and ev.button == 1:
                 if self.board_gui._dragging:
@@ -245,7 +294,9 @@ class GameGUI:
             self._feedback("Insufficient funds!")
 
     def _feedback(self, msg: str):
-        self.feedback, self.feedback_timer, self.feedback_alpha = msg, 2.0, 255
+        self.feedback_queue.append(msg)
+        if self.feedback_timer <= 0:
+            self._pop_next_feedback()
 
 
     # ───────────────────────────── drawing ───────────────────────────────────
@@ -257,6 +308,26 @@ class GameGUI:
         self._draw_side_panel()
         self._draw_feedback()
         self._draw_zoom_buttons()
+        
+        if self.selected_poacher and self.selected_poacher in self.control.board.poachers:
+            # Convert poacher world position to screen position
+            world_pos = self.selected_poacher.position
+            tile_size = self.board_gui.tile
+            cam = self.board_gui.cam
+            board_rect = BOARD_RECT
+
+            # Translate world to screen
+            px = int(board_rect.centerx + (world_pos.x - cam.x) * tile_size)
+            py = int(board_rect.centery + (world_pos.y - cam.y) * tile_size)
+
+            # Create attack button rect relative to poacher position
+            self.attack_button_rect = pygame.Rect(px + 20, py - 10, 80, 30)
+
+            pygame.draw.rect(self.screen, (200, 50, 50), self.attack_button_rect, border_radius=5)
+            pygame.draw.rect(self.screen, (255, 255, 255), self.attack_button_rect, 2, border_radius=5)
+            label = self.font_small.render("Attack", True, (255, 255, 255))
+            self.screen.blit(label, label.get_rect(center=self.attack_button_rect.center))
+
         pygame.display.flip()
 
     # ---------------- top bar ------------------------------------------------
@@ -366,3 +437,9 @@ class GameGUI:
                                  self.btn_zoom_in.centery  - plus.get_height()//2))
         self.screen.blit(minus, (self.btn_zoom_out.centerx - minus.get_width()//2,
                                  self.btn_zoom_out.centery - minus.get_height()//2))
+
+    def _pop_next_feedback(self):
+        if self.feedback_queue:
+            self.feedback = self.feedback_queue.pop(0)
+            self.feedback_timer = 2.0
+            self.feedback_alpha = 255
