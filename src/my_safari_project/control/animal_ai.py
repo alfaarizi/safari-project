@@ -212,7 +212,8 @@ class AnimalAI:
                             min_dist = shape["collision_radius"] + COLLISION_RADIUS
                             separation = delta * ((min_dist - distance) / distance)
                             animal.position = shape["position"] - separation
-                            animal.target = None
+                            if status.state not in [AnimalState.SEEKING_WATER, AnimalState.SEEKING_FOOD, AnimalState.SEEKING_MATE, AnimalState.MIGRATING]:
+                                animal.target = None
                             shape["in_collision"] = True
                             # State transitions on collision
                             match entity_type:
