@@ -11,7 +11,7 @@ from my_safari_project.control.game_controller import (
     GameController,
     RANGER_COST, PLANT_COST, POND_COST,
     HYENA_COST, LION_COST, TIGER_COST,
-    BUFFALO_COST, ELEPHANT_COST, GIRAFFE_COST, HIPPO_COST, ZEBRA_COST
+    BUFFALO_COST, ELEPHANT_COST, GIRAFFE_COST, HIPPO_COST, ZEBRA_COST,CHIP_COST
 )
 # Import sound effects
 from my_safari_project.audio import (
@@ -89,6 +89,7 @@ class GameGUI:
 
         self.control: GameController = controller
         self.board_gui = BoardGUI(self.control.board)
+        self.feedback_queue = []
 
         # Set initial zoom to show full board
         self.board_gui.tile = self.board_gui.MIN_TILE
@@ -113,11 +114,16 @@ class GameGUI:
         height_ratio = board_height_pixels / controller.board.height
         self.board_gui.tile = min(width_ratio, height_ratio) * 0.9  # 90% to add some margin
 
+        self.selected_poacher = None
+        self.attack_button_rect = None
+
+
     # ───────────────────────────── public API ────────────────────────────────
     def update(self, dt: float):
         """Called every frame by your main loop."""
         self._update_ui(dt)
         self._handle_events()
+        self.board_gui.update_day_night(dt, self.control.timer.elapsed_seconds, pygame.mouse.get_pos())
         self._draw()
         self._check_day_transition()
 
@@ -134,14 +140,18 @@ class GameGUI:
             self.board_gui.follow(self.control.board.jeeps[0].position)
 
         # day/night tint
-        self.board_gui.update_day_night(dt)
+        elapsed = self.control.timer.elapsed_seconds
+        self.board_gui.update_day_night(dt, elapsed, pygame.mouse.get_pos())
 
         # feedback fade
         if self.feedback_timer > 0:
             self.feedback_timer -= dt
             self.feedback_alpha = int(255 * min(1.0, self.feedback_timer * 2))
         else:
-            self.feedback_alpha = 0
+            if self.feedback_queue:
+                self._pop_next_feedback()
+            else:
+                self.feedback_alpha = 0
 
             
     def _check_day_transition(self):
@@ -189,6 +199,12 @@ class GameGUI:
                     self.dragging_road = None
                 elif BOARD_RECT.collidepoint(ev.pos):
                     self.board_gui.start_drag(ev.pos)
+                elif self.btn_zoom_in.collidepoint(ev.pos):
+                    self.board_gui.zoom(+1, ev.pos, BOARD_RECT)
+                    play_button_click()
+                elif self.btn_zoom_out.collidepoint(ev.pos):
+                    self.board_gui.zoom(-1, ev.pos, BOARD_RECT)
+                    play_button_click()
                 else:
                     # Check shop items
                     for i, r in enumerate(self.item_rects):
@@ -236,6 +252,9 @@ class GameGUI:
             elif name == "Pond":
                 self.control.spawn_pond()
                 play_place_item()
+            elif name == "Light Chip":
+                self.control.enter_chip_mode()
+                return
             else:
                 self.control.spawn_animal(name.upper())
                 play_place_item()
@@ -248,7 +267,9 @@ class GameGUI:
             self._feedback("Insufficient funds!")
 
     def _feedback(self, msg: str):
-        self.feedback, self.feedback_timer, self.feedback_alpha = msg, 2.0, 255
+        self.feedback_queue.append(msg)
+        if self.feedback_timer <= 0:
+            self._pop_next_feedback()
 
 
     # ───────────────────────────── drawing ───────────────────────────────────
@@ -299,6 +320,26 @@ class GameGUI:
         self._draw_side_panel()
         self._draw_feedback()
         self._draw_zoom_buttons()
+        
+        if self.selected_poacher and self.selected_poacher in self.control.board.poachers:
+            # Convert poacher world position to screen position
+            world_pos = self.selected_poacher.position
+            tile_size = self.board_gui.tile
+            cam = self.board_gui.cam
+            board_rect = BOARD_RECT
+
+            # Translate world to screen
+            px = int(board_rect.centerx + (world_pos.x - cam.x) * tile_size)
+            py = int(board_rect.centery + (world_pos.y - cam.y) * tile_size)
+
+            # Create attack button rect relative to poacher position
+            self.attack_button_rect = pygame.Rect(px + 20, py - 10, 80, 30)
+
+            pygame.draw.rect(self.screen, (200, 50, 50), self.attack_button_rect, border_radius=5)
+            pygame.draw.rect(self.screen, (255, 255, 255), self.attack_button_rect, 2, border_radius=5)
+            label = self.font_small.render("Attack", True, (255, 255, 255))
+            self.screen.blit(label, label.get_rect(center=self.attack_button_rect.center))
+
         pygame.display.flip()
     # ---------------- top bar ------------------------------------------------
     def _draw_top_bar(self):
@@ -407,3 +448,9 @@ class GameGUI:
                                  self.btn_zoom_in.centery  - plus.get_height()//2))
         self.screen.blit(minus, (self.btn_zoom_out.centerx - minus.get_width()//2,
                                  self.btn_zoom_out.centery - minus.get_height()//2))
+
+    def _pop_next_feedback(self):
+        if self.feedback_queue:
+            self.feedback = self.feedback_queue.pop(0)
+            self.feedback_timer = 2.0
+            self.feedback_alpha = 255

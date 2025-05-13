@@ -8,6 +8,9 @@ from typing import Tuple
 
 from my_safari_project.model.board import Board
 from my_safari_project.model.road  import Road
+from my_safari_project.model.animal import Animal
+from my_safari_project.model.timer import TIME_SCALE
+
 
 
 class BoardGUI:
@@ -123,15 +126,40 @@ class BoardGUI:
 
 
     # ─── day / night tinting ──────────────────────────────────────────
-    def update_day_night(self, dt: float):
-        if not self._dn_enabled:
-            return
-        self._dn_timer = (self._dn_timer + dt) % self._dn_period
-        t = self._dn_timer
-        if   t < 270:   self.dn_opacity = 0.0
-        elif t < 300:   self.dn_opacity = (t - 270) / 30
-        elif t < 450:   self.dn_opacity = 1.0
-        else:           self.dn_opacity = 1.0 - ((t - 450) / 30)
+    def update_day_night(self, dt: float, elapsed_seconds: float, mouse_pos):
+
+        # Convert elapsed seconds to total game minutes
+        game_minutes = elapsed_seconds / TIME_SCALE["minute"]  
+
+        # Add 360 to shift time start from 0 to 6:00 AM
+        total_minutes = (game_minutes + 360) % 1440  # wrap around 24h
+
+        # Fade transitions
+        fade_in_start = 360   # 6:00 AM
+        fade_in_end   = 540   # 9:00 AM
+        fade_out_start = 1080 # 6:00 PM
+        fade_out_end   = 1260 # 9:00 PM
+
+
+        if fade_in_start <= total_minutes < fade_in_end:
+            t = (total_minutes - fade_in_start) / (fade_in_end - fade_in_start)
+            target_opacity = 1 - t  # fade out (dark -> light)
+        elif fade_out_start <= total_minutes < fade_out_end:
+            t = (total_minutes - fade_out_start) / (fade_out_end - fade_out_start)
+            target_opacity = t  # fade in (light  dark)
+        elif total_minutes >= fade_out_end or total_minutes < fade_in_start:
+            target_opacity = 1.0  # full dark
+        else:
+            target_opacity = 0.0  # full bright
+
+        # Smooth interpolation
+        speed = 0.3  # You can tweak this
+        self.dn_opacity += (target_opacity - self.dn_opacity) * speed * dt * 60
+        self.dn_opacity = max(0.0, min(1.0, self.dn_opacity))
+
+        self._night_active = target_opacity == 1.0
+        self._cursor_pos = mouse_pos
+
 
 
     # ─── rendering ─────────────────────────────────────────────────────
@@ -140,116 +168,119 @@ class BoardGUI:
               c2: Tuple[int,int,int,int], t: float) -> Tuple[int,int,int,int]:
         return tuple(int(a + (b - a)*t) for a,b in zip(c1, c2))
 
+
+
+    @staticmethod
+    def _smoothstep(t: float) -> float:
+        return t * t * (3 - 2 * t)
+
     def render(self, screen: Surface, rect: Rect):
         if self.board.width == 0 or self.board.height == 0:
             return
 
-        # ensure at least 4×4 tiles fit in the view
-        self.tile = max(4, min(self.tile,
-                               rect.width  // 4,
-                               rect.height // 4))
+        self.tile = max(4, min(self.tile, rect.width // 4, rect.height // 4))
         side = self.tile
 
-        # how many tiles in each direction from camera
-        half_w = rect.width  // (2 * side)
+        half_w = rect.width // (2 * side)
         half_h = rect.height // (2 * side)
 
-        # world‐bounds
         min_x = int(self.cam.x) - half_w - 1
         min_y = int(self.cam.y) - half_h - 1
         max_x = int(self.cam.x) + half_w + 2
         max_y = int(self.cam.y) + half_h + 2
 
-        # pixel offset for (min_x, min_y)
         ox = rect.centerx - int((self.cam.x - min_x) * side)
         oy = rect.centery - int((self.cam.y - min_y) * side)
 
         vis_w = int(max_x - min_x)
         vis_h = int(max_y - min_y)
 
-        # ---------- background desert ----------------------------
+        visible_map = None
+        world_x = world_y = 0
+        if self._night_active:
+            radius = 5
+            mx, my = self._cursor_pos
+            world_x = self.cam.x + (mx - rect.centerx) / side
+            world_y = self.cam.y + (my - rect.centery) / side
+            visible_map = lambda x, y: (x - world_x) ** 2 + (y - world_y) ** 2 <= radius ** 2
+
+        # Background
         bg = pygame.transform.scale(self.desert, (vis_w * side, vis_h * side))
         screen.blit(bg, (ox, oy))
 
-        # ---------- roads ------------------------------------------
+        # Roads
         road_col = (105, 105, 105)
-        for rd in self.board.roads:  # type: Road
+        for rd in self.board.roads:
             if min_x <= rd.pos.x < max_x and min_y <= rd.pos.y < max_y:
                 px = ox + int((rd.pos.x - min_x) * side)
                 py = oy + int((rd.pos.y - min_y) * side)
                 pygame.draw.rect(screen, road_col, (px, py, side, side))
-        
-        # Animal AI collision/detection
+
+        # Animal debug overlays
         if getattr(self.board.wildlife_ai.animal_ai, "debug_mode"):
             self.board.wildlife_ai.animal_ai.render(screen, ox, oy, side, min_x, min_y)
 
-        # ---------- ponds ------------------------------------------
+        # Ponds (always visible)
         for p in self.board.ponds:
             x, y = p.position
             if min_x <= x < max_x and min_y <= y < max_y:
                 px = ox + int((x - min_x) * side)
                 py = oy + int((y - min_y) * side)
-                screen.blit(
-                    pygame.transform.scale(self.pond, (side, side)),
-                    (px, py)
-                )
+                screen.blit(pygame.transform.scale(self.pond, (side, side)), (px, py))
 
-        # ---------- plants -----------------------------------------
+        # Plants (always visible)
         gw, gh = side, int(side * 1.2)
         for p in self.board.plants:
             x, y = p.position
             if min_x <= x < max_x and min_y <= y < max_y:
                 px = ox + int((x - min_x) * side)
                 py = oy + int((y - min_y) * side - (gh - side))
-                screen.blit(
-                    pygame.transform.scale(self.plant, (gw, gh)),
-                    (px, py)
-                )
-        
-        # ---------- animals -----------------------------
+                screen.blit(pygame.transform.scale(self.plant, (gw, gh)), (px, py))
+
+        # Animals (conditionally visible at night)
         aw, ah = side, side
         for animal in self.board.animals:
-            loc = getattr(animal, "position", Vector2(0,0))
+            loc = getattr(animal, "position", Vector2(0, 0))
+
+            if self._night_active:
+                is_tagged = animal.animal_id in self.board.visible_animals_night
+                near_ranger = any(r.position.distance_to(loc) <= 5 for r in self.board.rangers)
+                near_tourist = any(t.position.distance_to(loc) <= 5 for t in self.board.tourists)
+                if not (is_tagged or near_ranger or near_tourist):
+                    continue
+
             px = ox + int((loc.x - min_x) * side)
             py = oy + int((loc.y - min_y) * side)
             screen.blit(pygame.transform.scale(self.animals[animal.species.value], (aw, ah)), (px, py))
 
-        # ---------- jeeps (2×2) ------------------------------------
+        # Jeeps
         jw = jh = side * 2
         for j in self.board.jeeps:
             cx, cy = j.position
             if (min_x - 2) <= cx < (max_x + 2) and (min_y - 2) <= cy < (max_y + 2):
-                # rotate & scale
                 img = pygame.transform.scale(self.jeep, (jw, jh))
-                # pygame.rotate is CCW; our heading is +° CCW
                 img = pygame.transform.rotate(img, -j.heading)
-                r = img.get_rect(center=(0,0))
-                px = ox + int((cx - min_x)*side - r.width / 2)
-                py = oy + int((cy - min_y)*side - r.height / 2)
+                r = img.get_rect(center=(0, 0))
+                px = ox + int((cx - min_x) * side - r.width / 2)
+                py = oy + int((cy - min_y) * side - r.height / 2)
                 screen.blit(img, (px, py))
 
-        # ---------- rangers ----------------------------------------
+        # Rangers
         for r in self.board.rangers:
             rx, ry = r.position
             if min_x <= rx < max_x and min_y <= ry < max_y:
-                px = ox + int((rx - min_x)*side)
-                py = oy + int((ry - min_y)*side)
-                screen.blit(
-                    pygame.transform.scale(self.ranger, (side, side)),
-                    (px, py)
-                )
+                px = ox + int((rx - min_x) * side)
+                py = oy + int((ry - min_y) * side)
+                screen.blit(pygame.transform.scale(self.ranger, (side, side)), (px, py))
 
-        # ---------- poachers (only if visible) ---------------------
+        # Poachers (only if visible to a ranger)
         for p in self.board.poachers:
-            if any(p.is_visible_to(r) for r in self.board.rangers):
-                px = ox + int((p.position.x - min_x)*side)
-                py = oy + int((p.position.y - min_y)*side)
-                screen.blit(
-                    pygame.transform.scale(self.poacher, (side, side)),
-                    (px, py)
-                )
+            if p.visible:
+                px = ox + int((p.position.x - min_x) * side)
+                py = oy + int((p.position.y - min_y) * side)
+                screen.blit(pygame.transform.scale(self.poacher, (side, side)), (px, py))
 
-        # ---------- grid -------------------------------------------
+        # Grid
         grid_col = (80, 80, 80)
         for c in range(vis_w + 1):
             x = ox + c * side
@@ -258,10 +289,11 @@ class BoardGUI:
             y = oy + r * side
             pygame.draw.line(screen, grid_col, (ox, y), (ox + vis_w * side, y), 1)
 
-        # ---------- day / night overlay ----------------------------
+        # Night overlay (smooth tint)
         if self.dn_opacity > 0:
-            tint = self._lerp((255,255,255,0), (0,0,70,160), self.dn_opacity)
-            ov   = pygame.Surface((vis_w * side, vis_h * side), pygame.SRCALPHA)
+            smoothed = self._smoothstep(self.dn_opacity)
+            tint = self._lerp((255, 255, 255, 0), (0, 0, 70, 160), smoothed)
+            ov = pygame.Surface((vis_w * side, vis_h * side), pygame.SRCALPHA)
             ov.fill(tint)
             screen.blit(ov, (ox, oy))
 

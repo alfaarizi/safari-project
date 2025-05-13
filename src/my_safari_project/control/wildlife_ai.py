@@ -19,13 +19,16 @@ THIRST_THRESHOLD = 7    # when animal seeks wate
 class WildlifeAI:
     """Keeps Rangers & Poachers moving + interactions."""
 
-    def __init__(self, board: Board, capital: Capital):
+    def __init__(self, board: Board, capital: Capital, feedback_callback=None):
         self.board = board
         self.capital = capital
         self._poacher_timer = 0.0
 
         self.animal_ai = AnimalAI(board)
         self.board.wildlife_ai = self
+
+        self._feedback = feedback_callback
+
 
     # -------------------------------------------------
     def update(self, dt: float):
@@ -36,7 +39,12 @@ class WildlifeAI:
 
         # ---- Update Poachers ----
         for p in self.board.poachers:
-            p.update(dt, self.board)
+            result = p.update(dt, self.board)
+            if result:
+                parts = result.split(":")
+                species, aid = parts[1], parts[2]
+                self._feedback(f"{species} #{aid} was killed by a poacher!")
+
 
         # ---- Update Rangers ----
         for r in self.board.rangers:
