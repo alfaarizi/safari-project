@@ -19,7 +19,7 @@ class Poacher:
         id: int,
         name: str,
         position: Vector2,
-        speed: float = 1.6,
+        speed: float = 1.0,
     ):
         self.id: int = id
         self.name: str = name
@@ -41,14 +41,14 @@ class Poacher:
             random.randint(0, height - 1)
         )
 
-    def update(self, dt: float, board: "Board"):
-        # every 1s pick a new random tile
+    def update(self, dt: float, board: "Board")-> str|None:
+        # Every 1s pick a new random tile
         self._timer += dt
         if self._timer >= 1.0:
             self._timer = 0.0
             self.choose_random_target(board.width, board.height)
 
-        # move straight toward _target
+        # Move toward _target
         direction = self._target - self.position
         if direction.length_squared() > 0:
             step = self.speed * dt
@@ -56,6 +56,24 @@ class Poacher:
                 self.position.update(self._target)
             else:
                 self.position += direction.normalize() * step
+
+        # ---- 🔍 Visibility Check ----
+        self.visible = any(
+            self.position.distance_to(r.position) <= r.vision for r in board.rangers
+        ) or any(
+            self.position.distance_to(a.position) <= 10 and a.is_alive for a in board.animals
+        )
+
+        # ---- 💥 Hunt Animal ----
+        # --- Hunt and kill nearby animals ---
+        for animal in board.animals[:]:  # safe copy
+            if animal.is_alive and self.position.distance_to(animal.position) < 2:
+                animal.kill()
+                board.animals.remove(animal)
+                self.animals_caught += 1
+                return f"animal_killed:{animal.species.name}:{animal.animal_id}"
+
+        return None
 
     def hunt_animal(self, animal: Animal) -> bool:
         """
