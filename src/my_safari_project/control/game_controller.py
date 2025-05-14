@@ -2,6 +2,9 @@
 
 import random
 from enum import Enum
+
+from my_safari_project.audio import play_jeep_start
+from my_safari_project.model.jeep import Jeep
 from pygame.math import Vector2
 
 # Model
@@ -64,6 +67,7 @@ ELEPHANT_COST = 300
 GIRAFFE_COST  = 150
 HIPPO_COST    = 175
 ZEBRA_COST    = 130
+CHIP_COST = 50
 
 
 # -----------------------------------------------------------
@@ -99,8 +103,13 @@ class GameController:
         self.game_gui = GameGUI(self)
 
         # ─── AI / helpers ────────────────────────────────────────
-        self.wildlife_ai = WildlifeAI(self.board, self.capital)
+        self.wildlife_ai = WildlifeAI(self.board, self.capital, feedback_callback=self.game_gui._feedback)
         self._poacher_timer = 0.0
+
+        self.visible_animals_night = set()
+        self.board.visible_animals_night = self.visible_animals_night
+        self.chip_placement_mode = False
+
 
     def run(self):
         """Main loop."""
@@ -110,6 +119,18 @@ class GameController:
             self._update_sim(dt)
             self.game_gui.update(dt)
         self.game_gui.exit()
+
+    def handle_chip_click(self, world_pos: Vector2) -> bool:
+        animal_clicked = self.game_gui.board_gui.get_animal_at(world_pos)
+        if animal_clicked:
+            self.visible_animals_night.add(animal_clicked.animal_id)
+            self.chip_placement_mode = False
+            self.game_gui._feedback(f"Animal #{animal_clicked.animal_id} tagged!")
+            return True
+        else:
+            self.game_gui._feedback("No animal at clicked location.")
+            return False
+
 
     # ───────────────────────── Simulation Update ──────────────────────────
     def _update_sim(self, dt: float):
@@ -133,14 +154,11 @@ class GameController:
 
         # 3) rangers
         for r in self.board.rangers:
-            visible = [p for p in self.board.poachers if p.is_visible_to(r)]
-            if visible:
-                tgt = min(visible, key=lambda p: r.position.distance_to(p.position))
-                r.chase_poacher(tgt)
-                if r.eliminate_poacher(tgt):
-                    self.capital.addFunds(50)
-            else:
-                r.patrol(self.board.width, self.board.height)
+            result = r.update(dt, self.board)
+            if result == "poacher_eliminated":
+                self.capital.addFunds(50)
+                self.game_gui._feedback("Poacher eliminated! +$50")
+
 
     # ───────────────────────── Spawning Helpers ──────────────────────────
     def _random_tile(self):
@@ -284,3 +302,34 @@ class GameController:
 
     def is_game_over(self) -> bool:
         return self.won or self.lost
+    
+    def enter_chip_mode(self):
+        self.chip_placement_mode = True
+        self.game_gui._feedback("Click an animal to tag with chip")
+
+    # ────────────────────────── jeep shop helper ─────────────────────────
+    def try_spawn_jeep(self, world_click: Vector2) -> bool:
+        if not self.capital.deductFunds(50):
+            return False                                  # not enough money
+
+        click_tile = Vector2(int(world_click.x), int(world_click.y))
+        # find exact road tile at that integer position
+        roads_here = [r for r in self.board.roads if r.pos == click_tile]
+        if not roads_here:
+            self.capital.addFunds(50)                     # refund
+            return False                                  # not on a road
+
+        # let the board figure out the longest path starting FROM THAT TILE
+        path = self.board._longest_path(click_tile)
+        if len(path) < 2:
+            self.capital.addFunds(50)                     # refund, unusable
+            return False
+
+        jeep = Jeep(len(self.board.jeeps) + 1, Vector2(path[0]))
+        jeep.board = self.board
+        jeep.set_path(path)
+        self.board.jeeps.append(jeep)
+        play_jeep_start()
+        return True
+
+

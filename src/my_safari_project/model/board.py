@@ -5,6 +5,7 @@ from collections import deque
 from typing import List
 from pygame.math import Vector2
 
+
 from my_safari_project.model.animal import Animal
 from my_safari_project.model.field import Field
 from my_safari_project.model.road  import Road, RoadType
@@ -52,22 +53,17 @@ class Board:
 
     # ── road building ─────────────────────────────────────────────────────
     def _build_roads(self, n: int):
-        """
-        Create `n` separate roads, roughly evenly spaced vertically.
-        Each road runs left→right across the entire world with a couple of
-        random vertical offsets so they are not perfectly straight.
-        """
+        """In Board class - Modified to remember the longest road"""
         gap = self.height // (n + 1)
+        longest_road_length = 0
+        longest_road_path = None
+
         for i in range(n):
             y = (i + 1) * gap
             start = Vector2(0, y)
-            end   = Vector2(self.width - 1, y)
+            end = Vector2(self.width - 1, y)
 
-            # remember real entrances/exits for jeep paths
-            self.entrances.append(start)
-            self.exits.append(end)
-
-            # optional random bend every ~20 tiles
+            # Build the road path
             pts: list[Vector2] = [start]
             x = 0
             while x < self.width - 1:
@@ -78,7 +74,19 @@ class Board:
                 pts.append(Vector2(x, bend_y))
             pts.append(end)
 
-            # lay segments
+            # Calculate road length
+            road_length = sum(a.distance_to(b) for a, b in zip(pts, pts[1:]))
+            if road_length > longest_road_length:
+                longest_road_length = road_length
+                longest_road_path = pts
+                self.longest_road_start = start
+                self.longest_road_end = end
+
+            # Remember entrances/exits
+            self.entrances.append(start)
+            self.exits.append(end)
+
+            # Lay road segments
             for a, b in zip(pts, pts[1:]):
                 self._lay_segment(a, b)
 
@@ -116,49 +124,156 @@ class Board:
         fld.terrain_type = "ROAD"
         fld.set_obstacle(True)
 
+    def add_road(self, x: int, y: int, road_type: str) -> bool:
+        """Add a road from the shop at the specified position."""
+        # Map shop road types to RoadType enum
+        road_type_map = {
+            "h_road": RoadType.STRAIGHT_H,
+            "v_road": RoadType.STRAIGHT_V,
+            "l_road": RoadType.TURN_L,
+            "rl_road": RoadType.TURN_RL,
+            "il_road": RoadType.TURN_IL,
+            "irl_road": RoadType.TURN_IRL
+        }
+
+        # Check bounds
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return False
+
+        # Check if position is already occupied
+        for road in self.roads:
+            if road.pos == Vector2(x, y):
+                return False
+
+        # Create and add new road
+        if road_type in road_type_map:
+            road = Road(Vector2(x, y), road_type_map[road_type])
+            self.roads.append(road)
+            self._stitch_into_network(road)
+            return True
+
+        return False
+
+    def add_road_segment(self, x: int, y: int, road_type: str) -> bool:
+        road_type_map = {
+            "h_road": RoadType.STRAIGHT_H,
+            "v_road": RoadType.STRAIGHT_V
+        }
+
+        if road_type not in road_type_map:
+            return False
+
+        cells_to_check = []
+        if road_type == "h_road":
+            max_cells = min(10, self.width - x)
+            for i in range(max_cells):
+                cur_x = x + i
+                # Stop if we hit another road
+                if any(r.pos == Vector2(cur_x, y) for r in self.roads):
+                    break
+                cells_to_check.append((cur_x, y))
+        else:  # v_road
+            max_cells = min(10, self.height - y)
+            for i in range(max_cells):
+                cur_y = y + i
+                # Stop if we hit another road
+                if any(r.pos == Vector2(x, cur_y) for r in self.roads):
+                    break
+                cells_to_check.append((x, cur_y))
+
+        if not cells_to_check:
+            return False
+
+        prev_road = None
+        for cell_x, cell_y in cells_to_check:
+            new_road = Road(Vector2(cell_x, cell_y), road_type_map[road_type])
+            self.roads.append(new_road)
+            self._stitch_into_network(new_road)
+
+            if prev_road:
+                prev_road.add_neighbor(new_road.pos)
+                new_road.add_neighbor(prev_road.pos)
+            prev_road = new_road
+
+        return True
+
+        return True
+
     # ── path helper ───────────────────────────────────────────────────────
-    def _build_path(self, start: Vector2, goal: Vector2) -> list[Vector2]:
-        """Simple BFS along road tiles."""
-        start, goal = Vector2(start), Vector2(goal)
-        Q = deque([start])
-        prev = {tuple(start): None}
+    def _longest_path(self, start: Vector2) -> list[Vector2]:
+        """
+        Return the longest simple (no repeated tiles) path that starts at the
+        *road tile nearest `start`* and finishes on **any road end-point**
+        (a tile that has exactly one neighbour).
+        """
+        if not self.roads:
+                return [start]
+
         road_map = {tuple(r.pos): r for r in self.roads}
 
+        # snap ‘start’ to the nearest road-tile centre
+        snap = min(road_map.keys(),
+                        key=lambda p: Vector2(p).distance_to(start))
+        snap_v = Vector2(snap)
+
+        # breadth-first search that stores whole paths so we can compare
+        Q = deque([[snap_v]])
+        longest = [snap_v]
+
         while Q:
-            pos = Q.popleft()
-            if pos == goal:
-                break
-            for n in road_map[tuple(pos)].neighbors:
-                k = tuple(n)
-                if k not in prev:
-                    prev[k] = pos
-                    Q.append(n)
+                path = Q.popleft()
+                head = path[-1]
+                head_road = road_map[tuple(head)]
 
-        # reconstruct
-        path: list[Vector2] = []
-        cur = goal
-        while cur is not None:
-            path.append(cur)
-            cur = prev.get(tuple(cur))
-        path.reverse()
-        return path
+                # if we’re at an end-point AND longer than what we have, keep it
+                if len(head_road.neighbors) == 1 and len(path) > len(longest):
+                        longest = path
 
-    # ── jeep spawning ────────────────────────────────────────────────────
-    def _spawn_jeeps(self, n_jeeps: int):
-        """Distribute jeeps round-robin over available roads."""
-        for j_id in range(1, n_jeeps + 1):
-            road_idx = (j_id - 1) % len(self.entrances)
-            start, end = self.entrances[road_idx], self.exits[road_idx]
-            path = self._build_path(start, end)
+                for nbr in head_road.neighbors:
+                        if nbr not in path:                        # no cycles / repeats
+                                Q.append(path + [Vector2(nbr)])
 
-            jeep = Jeep(j_id, start + Vector2(.5, .5))
+        return longest
+
+
+    def _spawn_jeeps(self, n_jeeps: int = 5):
+        """Place jeeps at different entrances and find their longest paths."""
+        if not self.roads:
+            return
+
+        entrances = sorted(self.entrances, key=lambda p: p.y)[:n_jeeps]
+
+        for i, start in enumerate(entrances):
+            # Find path to nearest exit
+            path = self._longest_path(start)
+            if not path:
+                continue
+
+            jeep = Jeep(i + 1, Vector2(start))
+            jeep.board = self  # Set board reference
             jeep.set_path(path)
+            jeep.speed = 2.0
             self.jeeps.append(jeep)
 
     # ── update (called from GameController) ───────────────────────────────
     def update(self, dt: float, now: float):
-        for j in self.jeeps:
-            j.update(dt, now, self.jeeps)
+        for jeep in self.jeeps:
+            other_jeeps = [j for j in self.jeeps if j != jeep]
+            jeep.update(dt, now, other_jeeps)
+
+    # ------------------------------------------------------------------
+    def _stitch_into_network(self, road: Road):
+        """Link <road> to any existing road that touches it orthogonally."""
+        for other in self.roads:
+            if other is road:                # ignore self
+                continue
+            dx = int(other.pos.x - road.pos.x)
+            dy = int(other.pos.y - road.pos.y)
+            touching = (abs(dx) == 1 and dy == 0) or (abs(dy) == 1 and dx == 0)
+            if touching:
+                road.add_neighbor(other.pos)
+                other.add_neighbor(road.pos)
+
 
     # ---------------------------------------------------------------------
     def __repr__(self):
