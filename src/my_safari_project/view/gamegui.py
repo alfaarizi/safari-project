@@ -201,10 +201,15 @@ class GameGUI:
 
         for ev in pygame.event.get():
 
+            if ev.type == pygame.KEYDOWN and ev.key == pygame.K_d:
+                self.control.wildlife_ai.animal_ai.debug_mode = not self.control.wildlife_ai.animal_ai.debug_mode
+                debug_status = "ON" if self.control.wildlife_ai.animal_ai.debug_mode else "OFF"
+                self._feedback(f"Debug mode: {debug_status}")
+
             # -----------------------------------------------------------------
             #  LEFT-CLICK  (button 1)
             # -----------------------------------------------------------------
-            if ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+            elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
 
                 # --- zoom buttons --------------------------------------------
                 if self.btn_zoom_in.collidepoint(ev.pos):
@@ -275,8 +280,8 @@ class GameGUI:
                             self.dragging_jeep = True  # start jeep drag
                         elif item.get("type") in ("h_road", "v_road"):
                             self.dragging_road = item  # start road drag
-                        else:
-                            self._buy_item(i)  # normal purchase
+                        # else:
+                        #     self._buy_item(i)  # normal purchase
                         break  # stop scanning items
 
             # -----------------------------------------------------------------
@@ -466,33 +471,35 @@ class GameGUI:
 
         # 2) ghost‐sprite follows cursor while dragging
         if self.drag_item_idx >= 0:
+
             name = self.shop_items[self.drag_item_idx]["name"].lower()
-            img  = (getattr(self.board_gui, name)
-                    if name in ("plant", "pond", "ranger") else
-                    self.board_gui.animals[
-                        __import__("my_safari_project.model.animal",
+            print(name)
+            if name not in ["jeep", "straight v road", "straight h road"]:
+                img  = (getattr(self.board_gui, name) 
+                if name in ("plant", "pond", "ranger") 
+                else self.board_gui.animals[
+                    __import__("my_safari_project.model.animal",
                                 fromlist=["AnimalSpecies"]).AnimalSpecies[name.upper()].value
-                    ])
+                ])
+                size  = max(20, self.board_gui.tile)  # Make it at least visible when small
+                ghost = pygame.transform.scale(img, (size, size))
+                ghost.set_alpha(150)
 
-            size  = max(20, self.board_gui.tile)  # Make it at least visible when small
-            ghost = pygame.transform.scale(img, (size, size))
-            ghost.set_alpha(150)
+                if self.hover_tile is not None:
+                    gx, gy = self.hover_tile
+                    # correct calculation:
+                    px = (BOARD_RECT.centerx +
+                        (gx - self.board_gui.cam.x) * self.board_gui.tile -
+                        size // 2)
+                    py = (BOARD_RECT.centery +
+                        (gy - self.board_gui.cam.y) * self.board_gui.tile -
+                        size // 2)
+                else:
+                    # fallback raw mouse position
+                    mx, my = self.drag_pos
+                    px, py = mx - size // 2, my - size // 2
 
-            if self.hover_tile is not None:
-                gx, gy = self.hover_tile
-                # correct calculation:
-                px = (BOARD_RECT.centerx +
-                    (gx - self.board_gui.cam.x) * self.board_gui.tile -
-                    size // 2)
-                py = (BOARD_RECT.centery +
-                    (gy - self.board_gui.cam.y) * self.board_gui.tile -
-                    size // 2)
-            else:
-                # fallback raw mouse position
-                mx, my = self.drag_pos
-                px, py = mx - size // 2, my - size // 2
-
-            self.screen.blit(ghost, (px, py))
+                self.screen.blit(ghost, (px, py))
         
         if self.selected_poacher and self.selected_poacher in self.control.board.poachers:
             # Convert poacher world position to screen position

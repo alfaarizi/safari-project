@@ -214,22 +214,25 @@ class GameController:
             AnimalSpecies.HIPPO:    (Herbivore, 0.9, 175, random.randint(15,22)),
             AnimalSpecies.ZEBRA:    (Herbivore, 1.7, 130, random.randint(6, 9))
         }
-        species = getattr(AnimalSpecies, species_name.upper())
-        cls, spd, val, life = props[species]
-        pos = position if position is not None else self._random_tile()
-        tx, ty = int(pos.x), int(pos.y)
+        try:
+            species = getattr(AnimalSpecies, species_name.upper())
+            cls, spd, val, life = props[species]
+            pos = position if position is not None else self._random_tile()
+            tx, ty = int(pos.x), int(pos.y)
 
-
-        animal = cls(
+            animal = cls(
             animal_id = len(self.board.animals)+1,
             species   = species,
             position  = pos,
             speed     = spd,
             value     = val,
             lifespan  = life
-        )
-        self.board.animals.append(animal)
-        self.board.fields[ty][tx].add_object(animal)
+            )
+            
+            self.board.animals.append(animal)
+            self.board.fields[ty][tx].add_object(animal)
+        except AttributeError:
+            print("please fix me – drag and drop functionality issue")
 
     def spawn_poacher(self):
         pid = len(self.board.poachers) + 1

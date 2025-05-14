@@ -339,3 +339,22 @@ class BoardGUI:
         screen_y = rect.centery + rel_y
 
         return Vector2(screen_x, screen_y)
+
+    def screen_to_tile(
+        self,
+        screen_pos: Tuple[int, int],
+        board_rect: Rect
+    ) -> Vector2 | None:
+        """Map a screen (px,py) inside board_rect to a board‐tile (x,y)."""
+        mx, my = screen_pos
+        if not board_rect.collidepoint(mx, my):
+            return None
+        # offset in tiles from center
+        dx = (mx - board_rect.centerx) / self.tile
+        dy = (my - board_rect.centery) / self.tile
+        wx = self.cam.x + dx
+        wy = self.cam.y + dy
+        tx, ty = int(wx), int(wy)
+        if 0 <= tx < self.board.width and 0 <= ty < self.board.height:
+            return Vector2(tx, ty)
+        return None
