@@ -20,6 +20,8 @@ DEFAULT_COLOR     = Color(0, 100, 255, 128)
 OUTLINE_COLOR     = Color(255, 255, 255)
 COLLISION_COLOR   = Color(255, 0, 0, 180)
 LABEL_FONT_SIZE   = 28
+# Label font
+#font.init()
 
 # Simulation constants
 HUNGER_THRESHOLD, THIRST_THRESHOLD                  = 6, 6
@@ -210,7 +212,8 @@ class AnimalAI:
                             min_dist = shape["collision_radius"] + COLLISION_RADIUS
                             separation = delta * ((min_dist - distance) / distance)
                             animal.position = shape["position"] - separation
-                            animal.target = None
+                            if status.state not in [AnimalState.SEEKING_WATER, AnimalState.SEEKING_FOOD, AnimalState.SEEKING_MATE, AnimalState.MIGRATING]:
+                                animal.target = None
                             shape["in_collision"] = True
                             # State transitions on collision
                             match entity_type:
@@ -235,7 +238,7 @@ class AnimalAI:
                                             entity_status.reproduction_cooldown = 0.1 # Just enough to prevent double reproduction
                                             self._change_state(animal_id, AnimalState.REPRODUCING)
                                 case "jeep":
-                                    is_moving = bool(entity._path) and entity._idx < len(entity._path)
+                                    is_moving = bool(entity._path) and entity._path_index < len(entity._path)
                                     if is_moving: animal.is_alive = False
             # sort detections by distance
             self.detected_entities[animal_id]["detected"].sort(key=lambda e: e["distance"])

@@ -2,6 +2,9 @@
 
 import random
 from enum import Enum
+
+from my_safari_project.audio import play_jeep_start
+from my_safari_project.model.jeep import Jeep
 from pygame.math import Vector2
 
 # Model
@@ -64,6 +67,7 @@ ELEPHANT_COST = 300
 GIRAFFE_COST  = 150
 HIPPO_COST    = 175
 ZEBRA_COST    = 130
+CHIP_COST = 50
 
 
 # -----------------------------------------------------------
@@ -99,11 +103,13 @@ class GameController:
         self.game_gui = GameGUI(self)
 
         # ─── AI / helpers ────────────────────────────────────────
-        self.wildlife_ai = WildlifeAI(self.board, self.capital)
+        self.wildlife_ai = WildlifeAI(self.board, self.capital, feedback_callback=self.game_gui._feedback)
         self._poacher_timer = 0.0
 
-        #new timespeed
-        self.time_multiplier: float = 1.0 
+        self.visible_animals_night = set()
+        self.board.visible_animals_night = self.visible_animals_night
+        self.chip_placement_mode = False
+
 
     def run(self):
         """Main loop."""
@@ -113,6 +119,18 @@ class GameController:
             self._update_sim(dt)
             self.game_gui.update(dt)
         self.game_gui.exit()
+
+    def handle_chip_click(self, world_pos: Vector2) -> bool:
+        animal_clicked = self.game_gui.board_gui.get_animal_at(world_pos)
+        if animal_clicked:
+            self.visible_animals_night.add(animal_clicked.animal_id)
+            self.chip_placement_mode = False
+            self.game_gui._feedback(f"Animal #{animal_clicked.animal_id} tagged!")
+            return True
+        else:
+            self.game_gui._feedback("No animal at clicked location.")
+            return False
+
 
     # ───────────────────────── Simulation Update ──────────────────────────
     def _update_sim(self, dt: float):
@@ -136,14 +154,11 @@ class GameController:
 
         # 3) rangers
         for r in self.board.rangers:
-            visible = [p for p in self.board.poachers if p.is_visible_to(r)]
-            if visible:
-                tgt = min(visible, key=lambda p: r.position.distance_to(p.position))
-                r.chase_poacher(tgt)
-                if r.eliminate_poacher(tgt):
-                    self.capital.addFunds(50)
-            else:
-                r.patrol(self.board.width, self.board.height)
+            result = r.update(dt, self.board)
+            if result == "poacher_eliminated":
+                self.capital.addFunds(50)
+                self.game_gui._feedback("Poacher eliminated! +$50")
+
 
     # ───────────────────────── Spawning Helpers ──────────────────────────
     def _random_tile(self):
@@ -152,27 +167,38 @@ class GameController:
             random.randint(0, self.board.height - 1)
         )
 
-    def spawn_ranger(self):
+    def spawn_ranger(self, position: Vector2 | None = None):
         rid = len(self.board.rangers) + 1
-        self.board.rangers.append(
-            Ranger(rid, f"R{rid}", 50, self._random_tile())
-        )
+        pos = position if position is not None else self._random_tile()
+        tx, ty = int(pos.x), int(pos.y)
+        ranger = Ranger(rid, f"R{rid}", 50, pos)
+        self.board.fields[ty][tx].add_object(ranger)
+        self.board.rangers.append(ranger)
+    
 
-    def spawn_plant(self):
+    def spawn_plant(self, position : Vector2 | None = None):
         from my_safari_project.model.plant import Plant
         pid = len(self.board.plants) + 1
-        self.board.plants.append(
-            Plant(pid, self._random_tile())
-        )
+        pos = position if position is not None else self._random_tile()
+        tx, ty = int(pos.x), int(pos.y)
 
-    def spawn_pond(self):
+        plant = Plant(pid, pos)
+        self.board.fields[ty][tx].add_object(plant)
+        self.board.plants.append(plant)
+
+
+    def spawn_pond(self, position : Vector2 | None = None ):
         from my_safari_project.model.pond import Pond
         pid = len(self.board.ponds) + 1
-        self.board.ponds.append(
-            Pond(pid, self._random_tile())
-        )
+        pos = position if position is not None else self._random_tile()
+        tx, ty = int(pos.x), int(pos.y)
 
-    def spawn_animal(self, species_name: str):
+        pond = Pond(pid, pos)
+        self.board.fields[ty][tx].add_object(pond)
+        self.board.ponds.append(pond)
+
+
+    def spawn_animal(self, species_name: str, position: Vector2 | None = None):
         import random
         from my_safari_project.model.animal    import AnimalSpecies
         from my_safari_project.model.carnivore import Carnivore
@@ -188,24 +214,33 @@ class GameController:
             AnimalSpecies.HIPPO:    (Herbivore, 0.9, 175, random.randint(15,22)),
             AnimalSpecies.ZEBRA:    (Herbivore, 1.7, 130, random.randint(6, 9))
         }
-        species = getattr(AnimalSpecies, species_name.upper())
-        cls, spd, val, life = props[species]
-        self.board.animals.append(
-            cls(
-                animal_id  = len(self.board.animals) + 1,
-                species    = species,
-                position   = self._random_tile(),
-                speed      = spd,
-                value      = val,
-                lifespan   = life
+        try:
+            species = getattr(AnimalSpecies, species_name.upper())
+            cls, spd, val, life = props[species]
+            pos = position if position is not None else self._random_tile()
+            tx, ty = int(pos.x), int(pos.y)
+
+            animal = cls(
+            animal_id = len(self.board.animals)+1,
+            species   = species,
+            position  = pos,
+            speed     = spd,
+            value     = val,
+            lifespan  = life
             )
-        )
+            
+            self.board.animals.append(animal)
+            self.board.fields[ty][tx].add_object(animal)
+        except AttributeError:
+            print("please fix me – drag and drop functionality issue")
 
     def spawn_poacher(self):
         pid = len(self.board.poachers) + 1
         p   = Poacher(pid, f"P{pid}", position=self._random_tile())
         p.choose_random_target(self.board.width, self.board.height)
         self.board.poachers.append(p)
+        # tx, ty = int(p.position.x), int(p.position.y)
+        # self.board.fields[ty][tx].add_object(p)
 
     # ─────────────────────── Game State Logic ─────────────────────────
     def start_game(self):
@@ -270,3 +305,34 @@ class GameController:
 
     def is_game_over(self) -> bool:
         return self.won or self.lost
+    
+    def enter_chip_mode(self):
+        self.chip_placement_mode = True
+        self.game_gui._feedback("Click an animal to tag with chip")
+
+    # ────────────────────────── jeep shop helper ─────────────────────────
+    def try_spawn_jeep(self, world_click: Vector2) -> bool:
+        if not self.capital.deductFunds(50):
+            return False                                  # not enough money
+
+        click_tile = Vector2(int(world_click.x), int(world_click.y))
+        # find exact road tile at that integer position
+        roads_here = [r for r in self.board.roads if r.pos == click_tile]
+        if not roads_here:
+            self.capital.addFunds(50)                     # refund
+            return False                                  # not on a road
+
+        # let the board figure out the longest path starting FROM THAT TILE
+        path = self.board._longest_path(click_tile)
+        if len(path) < 2:
+            self.capital.addFunds(50)                     # refund, unusable
+            return False
+
+        jeep = Jeep(len(self.board.jeeps) + 1, Vector2(path[0]))
+        jeep.board = self.board
+        jeep.set_path(path)
+        self.board.jeeps.append(jeep)
+        play_jeep_start()
+        return True
+
+

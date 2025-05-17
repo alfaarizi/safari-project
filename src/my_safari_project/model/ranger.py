@@ -21,7 +21,7 @@ class Ranger:
             salary: float,
             position: Vector2,
             vision: float = 5.0,
-            speed: float = 2.0  # tiles / second (≈ jeep speed)
+            speed: float = 1.0  # tiles / second (≈ jeep speed)
     ):
         self.id = id
         self.name = name
@@ -29,6 +29,8 @@ class Ranger:
         self.position = Vector2(position)
         self.vision = vision
         self.speed = speed
+        self.assigned_poacher = None  # type: Optional[Poacher]
+
 
         self._target: Vector2 | None = None
         self.poachers_caught = 0
@@ -60,39 +62,52 @@ class Ranger:
         """
         Called once per frame from GameGUI; handles patrol, chase & capture.
         """
-        #  — find the nearest poacher within vision
-        visible = [
-            p for p in board.poachers
-            if not p.captured and self.position.distance_to(p.position) <= self.vision
-        ]
-        if visible:
-            # chase nearest
-            self._target = Vector2(min(
-                visible, key=lambda p: self.position.distance_to(p.position)
-            ).position)
+
+        # --- Manual pursuit if assigned ---
+        if self.assigned_poacher and self.assigned_poacher in board.poachers:
+            self.chase_poacher(self.assigned_poacher)
         else:
-            # pick / keep a random patrol point
-            if self._target is None or self.position.distance_to(self._target) < 0.2:
-                self._target = Vector2(
-                    random.uniform(0, board.width),
-                    random.uniform(0, board.height)
-                )
+            # --- Auto-chase nearest poacher in vision ---
+            visible_poachers = [
+                p for p in board.poachers
+                if not p.captured and self.position.distance_to(p.position) <= self.vision
+            ]
 
-        #  move toward target by at most `speed * dt`
+            if visible_poachers:
+                nearest = min(visible_poachers, key=lambda p: self.position.distance_to(p.position))
+                self._target = nearest.position
+            else:
+                # --- Patrol if no target ---
+                if self._target is None or self.position.distance_to(self._target) < 0.2:
+                    self._target = Vector2(
+                        random.uniform(0, board.width),
+                        random.uniform(0, board.height)
+                    )
+
+        # --- Move toward target ---
         if self._target:
-            d   = self._target - self.position
-            dst = d.length()
-            if dst > 0:
-                self.position += d.normalize() * min(self.speed * dt, dst)
+            direction = self._target - self.position
+            if direction.length() > 0:
+                self.position += direction.normalize() * min(self.speed * dt, direction.length())
 
-        #  if touching a poacher, capture
-        for p in visible:
-            if self.position.distance_to(p.position) < 0.5:
-                p.captured = True
-                board.poachers.remove(p)
-                # board.capital.addFunds(50)    # board has no capital
+        # --- Eliminate poacher if close enough ---
+        # Manual target
+        if self.assigned_poacher and self.assigned_poacher in board.poachers:
+            if self.position.distance_to(self.assigned_poacher.position) < 0.5:
+                board.poachers.remove(self.assigned_poacher)
                 self.poachers_caught += 1
-                break
+                self.assigned_poacher = None
+                # Call to GameController externally for bounty and feedback
+                return "poacher_eliminated"
+
+        # Auto-detected
+        for p in board.poachers[:]:
+            if self.position.distance_to(p.position) < 0.5:
+                board.poachers.remove(p)
+                self.poachers_caught += 1
+                return "poacher_eliminated"
+
+
 
     def eliminate_poacher(self, poacher: object) -> bool:
         """
