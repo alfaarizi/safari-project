@@ -23,6 +23,7 @@ from my_safari_project.audio import (
 
 # ────────────────────────────── layout constants ──────────────────────────────
 SCREEN_W, SCREEN_H = 1200, 800
+
 # Define BOARD_RECT to use most of the screen space
 SIDE_PANEL_W       = 200
 TOP_BAR_H          = 50
@@ -35,8 +36,8 @@ BOARD_RECT = pygame.Rect(
     SCREEN_H - TOP_BAR_H - BOTTOM_BAR_H - 20    # Height (remaining vertical space)
 )
 
-ZOOM_BTN_SZ = 32                                # size of the + / – buttons
-
+ZOOM_BTN_SZ = 32        # size of the + / – buttons
+SPEED_LEVELS = [1, 4, 8] #index 0 for 1x, index 1 for 4x, index 2 for 8x speed levels => logical speeds for buttons 1x,2x,3x
 # ────────────────────────────────── GameGUI ───────────────────────────────────
 class GameGUI:
     """
@@ -371,9 +372,11 @@ class GameGUI:
                     #     play_hover_sound()
 
             elif ev.type == pygame.MOUSEWHEEL:
-                self.board_gui.zoom(ev.y, pygame.mouse.get_pos(), BOARD_RECT)
-                # zoom counts as manual camera work
-                self.auto_follow = False
+                mx, my = pygame.mouse.get_pos()
+                if mx >= SCREEN_W - SIDE_PANEL_W: # over side panel -> scroll bar
+                    self.shop_scroll += ev.y * 24
+                else: # over board -> zoom functionality
+                    self.board_gui.zoom(ev.y, Vector2((mx, my)), BOARD_RECT)
 
     # ───────────────────────────── shop logic ───────────────────────────────
     def _buy_item(self, index: int):
@@ -600,6 +603,19 @@ class GameGUI:
                                          True, (255,255,255))
             self.screen.blit(txt, (rect.x + 8, rect.y + 6))
             y += 44
+
+             # scrollbar
+            if scroll_limit > 0:
+                frac  = (bottom - top)/(bottom - top + scroll_limit)
+                bar_h = max(20, int((bottom-top) * frac))   #never smaller than 20 px
+                bar_y = top - self.shop_scroll * (bottom-top-bar_h) / scroll_limit
+                rail_x = px + SIDE_PANEL_W - 16  # inside the panel, not at screen edge
+                sb_rect = pygame.Rect(rail_x, int(bar_y), 8, int(bar_h))
+                pygame.draw.rect(self.screen, (40,40,50), (rail_x, top, 8, bottom-top))
+                pygame.draw.rect(self.screen, (140,140,160), sb_rect, border_radius=3)
+
+        # speed / pause buttons
+        self._draw_speed_buttons()
 
     # ---------------- feedback --------------------------------------------
     def _draw_feedback(self):

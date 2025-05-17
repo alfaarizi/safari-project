@@ -114,8 +114,8 @@ class GameController:
     def run(self):
         """Main loop."""
         while self.running:
-            raw_dt = self.timer.tick()
-            dt     = min(raw_dt, 0.02)
+            dt = self.timer.tick(self.time_multiplier)  # scaled dt from Timer
+            dt = min(dt, 0.02 * max(self.time_multiplier, 1.0))
             self._update_sim(dt)
             self.game_gui.update(dt)
         self.game_gui.exit()
