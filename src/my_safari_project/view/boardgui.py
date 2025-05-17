@@ -185,8 +185,11 @@ class BoardGUI:
         if self.board.width == 0 or self.board.height == 0:
             return
 
-        self.tile = max(4, min(self.tile, rect.width // 4, rect.height // 4))
+        # self.tile = max(4, min(self.tile, rect.width // 4, rect.height // 4))
         side = self.tile
+
+        # keep tile size in sane bounds
+        self.tile = max(self.MIN_TILE, min(self.tile, self.MAX_TILE))
 
         half_w = rect.width // (2 * side)
         half_h = rect.height // (2 * side)

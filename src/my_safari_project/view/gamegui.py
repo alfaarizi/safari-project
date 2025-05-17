@@ -136,6 +136,11 @@ class GameGUI:
         self.last_day = -1
         play_game_music()
 
+        # ───── shop scrolling & speed buttons ─-
+        self.shop_scroll = 0   # pixels
+        self.btn_pause   = pygame.Rect(0,0,0,0)    # will be sized each frame
+        self.btn_speed   = []  # three Rects for 1×,2x and 3×
+
         #drag state
         self.drag_item_idx = -1
         self.drag_pos      = (0,0)
@@ -224,6 +229,15 @@ class GameGUI:
                 elif BOARD_RECT.collidepoint(ev.pos) and self.drag_item_idx < 0 :
                      # only pan the map if we’re NOT currently dragging a shop item
                      self.board_gui.start_drag(ev.pos)
+                else:
+                    # speed buttons
+                    if self.btn_pause.collidepoint(ev.pos):
+                        # toggle pause
+                        self.control.time_multiplier = 0.0 if self.control.time_multiplier else 1.0
+                    for i, r in enumerate(self.btn_speed):
+                        if r.collidepoint(ev.pos):
+                            self.control.time_multiplier = float(SPEED_LEVELS[i])
+                            break
 
                 # --- place a road segment (drag-and-drop) --------------------
                 if self.dragging_road and BOARD_RECT.collidepoint(ev.pos):
@@ -593,15 +607,26 @@ class GameGUI:
         title = self.font_medium.render("Shop", True, (255,255,255))
         self.screen.blit(title, (px + 20, py + 10))
 
-        #self.item_rects.clear()
-        y = py + 50
+        self.item_rects.clear()
+        top  = py + 50    # top of list
+        bottom = SCREEN_H - BOTTOM_BAR_H - 32  #  speed buttons row - gap_above_buttons
+
+        scroll_limit  = max(0, (len(self.shop_items)*44) - (bottom-top))
+
+        # clamp scroll offset
+        self.shop_scroll = max(-scroll_limit, min(0, self.shop_scroll))
+        y = top + self.shop_scroll
+
         for i, item in enumerate(self.shop_items):
-            rect = self.item_rects[i]
-            colour = (80,110,160) if i == self.hover_item else (90,100,120)
-            pygame.draw.rect(self.screen, colour, rect, border_radius=4)
-            txt = self.font_small.render(f"{item['name']}: ${item['cost']}",
-                                         True, (255,255,255))
-            self.screen.blit(txt, (rect.x + 8, rect.y + 6))
+            rect = pygame.Rect(px + 20, y, SIDE_PANEL_W - 40, 36)
+            self.item_rects.append(rect)
+            
+            if top <= rect.bottom <= bottom: # only draw visible ones
+                colour = (80,110,160) if i == self.hover_item else (90,100,120)
+                pygame.draw.rect(self.screen, colour, rect, border_radius=4)
+                txt = self.font_small.render(f"{item['name']}: ${item['cost']}",
+                                             True, (255,255,255))
+                self.screen.blit(txt, (rect.x + 8, rect.y + 6))
             y += 44
 
              # scrollbar
@@ -645,7 +670,85 @@ class GameGUI:
                                  self.btn_zoom_in.centery  - plus.get_height()//2))
         self.screen.blit(minus, (self.btn_zoom_out.centerx - minus.get_width()//2,
                                  self.btn_zoom_out.centery - minus.get_height()//2))
+    
+    # ───────────────────────── speed buttons ─────────────────────────────
+    def _draw_speed_buttons(self):
+        panel_x = SCREEN_W - SIDE_PANEL_W
+        btn_h, gap = 32, 8
+        num_btns = 4 
+        #the width inside the panel that we can use for the play/pause and speed buttons 
+        usable_w = SIDE_PANEL_W - 40 - gap*(num_btns-1)
+        btn_w = max(34, usable_w // num_btns)
 
+
+        #horizontal center inside side-panel
+        total_w = btn_w *4 + gap*3 
+        start_x = panel_x + (SIDE_PANEL_W - total_w)//2
+
+        #verticall center inside bottom-bar 
+        y = SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - btn_h)//2
+        total_w = btn_w * 4 + gap * 3
+        start_x = panel_x + (SIDE_PANEL_W - total_w) // 2
+
+        rects = []
+        for i in range(4):
+            x = start_x + i*(btn_w+gap)
+            rects.append(pygame.Rect(x, y, btn_w, btn_h))
+        self.btn_pause, self.btn_speed = rects[0], rects[1:]
+
+        # colours
+        green_bg  = (25,120, 25)
+        grey_bg   = (85, 90,110)
+        white     = (255,255,255)
+
+        for i, r in enumerate(rects):
+            is_active = ((i == 0 and self.control.time_multiplier == 0) or
+                        (i > 0 and self.control.time_multiplier == SPEED_LEVELS[i-1]))
+
+
+            #pause button (index 0) 
+            if i == 0:
+                #circular green button
+                radius = min(r.width, r.height) // 2 - 2
+                centre = r.center
+                paused = (self.control.time_multiplier == 0)
+
+                #drawing the outline for both play/pause button 
+                pygame.draw.circle(self.screen, white, centre, radius, 2)
+
+                # background
+                if paused:
+                    pygame.draw.circle(self.screen, green_bg, centre, radius-1)
+
+                if paused:
+                    # draw resume button ||
+                    bw = max(4, radius//3)
+                    bh = int(radius*1.0)
+                    gap = bw//2
+                    for dx in (-gap-bw//2, gap+bw//2):
+                        bar = pygame.Rect(centre[0]+dx-bw//2,
+                                          centre[1]-bh//2, bw, bh)
+                        pygame.draw.rect(self.screen, white, bar, border_radius=2)
+                else:
+                    # draw pause icon (|>)
+                    pts = [
+                        (centre[0]-radius//3, centre[1]-radius//2),
+                        (centre[0]-radius//3, centre[1]+radius//2),
+                        (centre[0]+radius//2, centre[1])
+                    ]
+                    pygame.draw.polygon(self.screen, white, pts)
+
+            #3 different speed buttons (1×/2×/3×)
+            else:
+                bg = green_bg if is_active else grey_bg
+                pygame.draw.rect(self.screen, bg, r, border_radius=4)
+                pygame.draw.rect(self.screen, white, r, 2, border_radius=4)
+                label = f"{i}×"
+                txt = self.font_small.render(label, True, white)
+                self.screen.blit(txt, (r.centerx - txt.get_width() // 2,
+                                       r.centery - txt.get_height() // 2))
+
+    # ───────────────────────── others ─────────────────────────────
     def _pop_next_feedback(self):
         if self.feedback_queue:
             self.feedback = self.feedback_queue.pop(0)

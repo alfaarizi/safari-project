@@ -106,6 +106,9 @@ class GameController:
         self.wildlife_ai = WildlifeAI(self.board, self.capital, feedback_callback=self.game_gui._feedback)
         self._poacher_timer = 0.0
 
+        #new timespeed
+        self.time_multiplier: float = 1.0 
+
         self.visible_animals_night = set()
         self.board.visible_animals_night = self.visible_animals_night
         self.chip_placement_mode = False
