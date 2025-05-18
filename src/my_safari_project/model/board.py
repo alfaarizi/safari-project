@@ -10,6 +10,8 @@ from my_safari_project.model.animal import Animal
 from my_safari_project.model.field import Field
 from my_safari_project.model.road  import Road, RoadType
 from my_safari_project.model.jeep  import Jeep
+from my_safari_project.model.tourist  import Tourist
+
 
 
 class Board:
@@ -20,7 +22,7 @@ class Board:
 
     # ----------------------------------------------------------------------
     def __init__(self, width: int = 100, height: int = 100,
-                 n_roads: int = 5, n_jeeps: int = 10):
+                 n_roads: int = 3, n_jeeps: int = 10):
         self.width, self.height = width, height
 
         self.fields: list[list[Field]] = [
@@ -44,7 +46,9 @@ class Board:
         self.plants = []
         self.ponds = []
         self.animals = []
-        self.tourists = []
+        self.tourists:List[Tourist] = []
+        self.waiting_tourists = []
+
 
 
         # ------------------------------------------------------------------

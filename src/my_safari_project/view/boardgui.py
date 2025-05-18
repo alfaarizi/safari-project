@@ -72,6 +72,11 @@ class BoardGUI:
         self.jeep    = self._load_img(root, "jeep")
         self.ranger  = self._load_img(root, "ranger")
         self.poacher = self._load_img(root, "poacher")
+        self.tourist = self._load_img(root, "tourist")
+        self.entrance = self._load_img(root, "entrance")
+        self.exit     = self._load_img(root, "exit")
+
+
         self.animals = [
             self._load_img(root, "carnivores/hyena"),
             self._load_img(root, "carnivores/lion"),
@@ -218,6 +223,21 @@ class BoardGUI:
         bg = pygame.transform.scale(self.desert, (vis_w * side, vis_h * side))
         screen.blit(bg, (ox, oy))
 
+        # Entrances
+        for e in self.board.entrances[:4]:
+            if min_x <= e.x < max_x and min_y <= e.y < max_y:
+                px = ox + int((e.x - min_x) * side)
+                py = oy + int((e.y - min_y) * side)
+                screen.blit(pygame.transform.scale(self.entrance, (side*4, side*4)), (px, py))
+
+        # Exits
+        for e in self.board.exits[:4]:
+            if min_x <= e.x < max_x and min_y <= e.y < max_y:
+                px = ox + int((e.x - min_x) * side)
+                py = oy + int((e.y - min_y) * side)
+                screen.blit(pygame.transform.scale(self.exit, (side*4, side*4)), (px, py))
+
+
         # Roads
         road_col = (105, 105, 105)
         for rd in self.board.roads:
@@ -292,6 +312,24 @@ class BoardGUI:
                 px = ox + int((p.position.x - min_x) * side)
                 py = oy + int((p.position.y - min_y) * side)
                 screen.blit(pygame.transform.scale(self.poacher, (side, side)), (px, py))
+
+        # Tourists
+        for t in self.board.tourists:
+            tx, ty = t.position
+            if min_x <= tx < max_x and min_y <= ty < max_y:
+                px = ox + int((tx - min_x) * side)
+                py = oy + int((ty - min_y) * side)
+                screen.blit(pygame.transform.scale(self.tourist, (side*2, side*2)), (px, py))
+
+        # Waiting Tourists at Entrances
+        for tourist in self.board.waiting_tourists:
+            loc = tourist.position
+            if min_x <= loc.x < max_x and min_y <= loc.y < max_y:
+                px = ox + int((loc.x - min_x) * side)
+                py = oy + int((loc.y - min_y) * side)
+                radius = max(3, int(side * 0.2))  # tourist dot size
+                pygame.draw.circle(screen, (255, 215, 0), (px + side // 2, py + side // 2), radius)
+
 
         # Grid
         grid_col = (80, 80, 80)

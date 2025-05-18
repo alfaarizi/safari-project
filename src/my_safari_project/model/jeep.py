@@ -23,6 +23,8 @@ class Jeep:
         self._path: List[Vector2] = []
         self._path_index = 0
         self.last_point = None
+        self.tourists = []
+
 
     def set_path(self, waypoints: list[Vector2]):
         self._path = [Vector2(wp.x + 0.5, wp.y + 0.5) for wp in waypoints]
@@ -52,6 +54,9 @@ class Jeep:
                         self.set_path(new_path)
                         return
             return
+        if self.at_path_end() and self.tourists:
+            for t in self.tourists[:]:
+                t.exit_jeep()
 
         # Get next waypoint
         next_point = self._path[self._path_index + 1]
@@ -89,6 +94,14 @@ class Jeep:
             move_dir = direction.normalize() * move_speed
             self.position += move_dir
             self.last_point = Vector2(self.position)
+        # Tourist pickup at entrance
+        for entrance in self.board.entrances:
+            if self.position.distance_to(entrance) < 0.5:
+                for tourist in self.board.waiting_tourists[:]:
+                    if len(self.tourists) < 4 and self.position.distance_to(tourist.position) < 1.0:
+                        if tourist.enter_jeep(self):
+                            self.board.waiting_tourists.remove(tourist)
+
 
         # Check if reached waypoint
         if distance < 0.1 and not self.is_reversing:
@@ -162,3 +175,6 @@ class Jeep:
     # ── debug ──────────────────────────────────────────────────────────────
     def __repr__(self):
         return f"<Jeep #{self.id} {self.position} hdg={self.heading:.1f}°>"
+
+    def at_path_end(self):
+        return self._path_index >= len(self._path) - 1
