@@ -216,6 +216,45 @@ class GameGUI:
             #  LEFT-CLICK  (button 1)
             # -----------------------------------------------------------------
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                if self.control.chip_placement_mode:
+                    world_pos = self.board_gui.screen_to_world(ev.pos)
+                    if world_pos:
+                        chip_placed = self.control.handle_chip_click(world_pos)
+                        if chip_placed:
+                            return 
+                
+                # Check if clicking the attack button
+                if self.attack_button_rect and self.attack_button_rect.collidepoint(ev.pos):
+                    if self.selected_poacher and self.control.board.rangers:
+                        nearest = min(
+                            self.control.board.rangers,
+                            key=lambda r: r.position.distance_to(self.selected_poacher.position)
+                        )
+                        nearest.set_target(self.selected_poacher.position)
+                        nearest.assigned_poacher = self.selected_poacher
+                        self._feedback(f"Ranger {nearest.name} is attacking {self.selected_poacher.name}!")
+                    self.attack_button_rect = None
+                    self.selected_poacher = None
+                    return
+
+                # Clicked on the board?
+                if BOARD_RECT.collidepoint(ev.pos):
+                    world_pos = self.board_gui.screen_to_world(ev.pos)
+                    clicked_poacher = None
+                    for poacher in self.control.board.poachers:
+                        if poacher.visible and poacher.position.distance_to(world_pos) < 1.0:
+                            clicked_poacher = poacher
+                            break
+
+                    if clicked_poacher:
+                        self.selected_poacher = clicked_poacher
+                        self._feedback(f"Selected {clicked_poacher.name} at {tuple(map(int, clicked_poacher.position))}")
+                    else:
+                        # Clicked board but not on poacher → clear selection
+                        self.selected_poacher = None
+                        self.attack_button_rect = None
+
+                    self.board_gui.start_drag(ev.pos)
 
                 # --- zoom buttons --------------------------------------------
                 if self.btn_zoom_in.collidepoint(ev.pos):
@@ -518,6 +557,7 @@ class GameGUI:
 
                 self.screen.blit(ghost, (px, py))
         
+        # 3) draw selected rangers (controllable-rangers)
         if self.selected_poacher and self.selected_poacher in self.control.board.poachers:
             # Convert poacher world position to screen position
             world_pos = self.selected_poacher.position
@@ -537,7 +577,7 @@ class GameGUI:
             label = self.font_small.render("Attack", True, (255, 255, 255))
             self.screen.blit(label, label.get_rect(center=self.attack_button_rect.center))
 
-        # 3) finally update the display
+        # 4) finally update the display
         pygame.display.flip()
 
     # ---------------- top bar ------------------------------------------------

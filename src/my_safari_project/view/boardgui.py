@@ -361,3 +361,19 @@ class BoardGUI:
         if 0 <= tx < self.board.width and 0 <= ty < self.board.height:
             return Vector2(tx, ty)
         return None
+
+    def screen_to_world(self, screen_pos: tuple[int, int]) -> Vector2:
+        """Convert screen (pixel) coordinates to world (tile) coordinates."""
+        from my_safari_project.view.gamegui import BOARD_RECT
+        mx, my = screen_pos
+        if not BOARD_RECT.collidepoint(mx, my):
+            return None  # Outside the board area
+
+        # Convert from screen to world based on camera and tile size
+        offset_x = BOARD_RECT.centerx
+        offset_y = BOARD_RECT.centery
+        rel_x = (mx - offset_x) / self.tile
+        rel_y = (my - offset_y) / self.tile
+        world_x = self.cam.x + rel_x
+        world_y = self.cam.y + rel_y
+        return Vector2(world_x, world_y)
