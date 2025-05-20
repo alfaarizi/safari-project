@@ -9,6 +9,7 @@ from my_safari_project.control.animal_ai import DETECTION_RADIUS
 
 from my_safari_project.model.poacher import Poacher
 from my_safari_project.control.animal_ai import AnimalAI
+from my_safari_project.control.tourist_ai import TouristAI
 
 if TYPE_CHECKING:
     from my_safari_project.model.board import Board
@@ -36,6 +37,8 @@ class WildlifeAI:
         self._tourist_interval = 20.0
         self._next_tourist_id = 1
 
+        self.tourist_ai = TouristAI(board, capital, feedback_callback)
+
 
 
     # -------------------------------------------------
@@ -62,28 +65,7 @@ class WildlifeAI:
         # ---- Update animals ----
         self.animal_ai.update(dt)
 
-        # Tourist spawning
-        self._tourist_timer += dt
-        if self._tourist_timer > self._tourist_interval:
-            self._spawn_tourist()
-            self._tourist_timer = 0.0
-
-        # Update tourists
-        for tourist in self.board.tourists[:]:
-            tourist.update(dt, self.board)
-            tourist.detect_animals(self.board.animals, DETECTION_RADIUS)
-
-            # Exit jeep if at end
-            if tourist.in_jeep and tourist.in_jeep.at_path_end():
-                tourist.exit_jeep()
-
-            # Despawn if done roaming
-            if tourist.is_done():
-                reward = 200 + 30 * len(tourist.seen_animals)
-                self.capital.addFunds(reward)
-                self.board.tourists.remove(tourist)
-                if self._feedback:
-                    self._feedback(f"Tourist#{tourist.id} saw {len(tourist.seen_animals)} animals → ${reward}")
+        self.tourist_ai.update(dt)
 
 
     # -------------------------------------------------
@@ -119,25 +101,5 @@ class WildlifeAI:
                     self.capital.addFunds(50)   # bounty
             else:
                 p.visible = False
-
-
-    def _spawn_tourist(self):
-        if not self.board.entrances:
-            return
-        start_pos = random.choice(self.board.entrances)
-        for i, entrance in enumerate(self.board.entrances[:4]):  # assuming 4 entrance tiles
-            tourist = Tourist(self._next_tourist_id, Vector2(entrance), board=self.board)
-            self.board.waiting_tourists.append(tourist)
-            self._next_tourist_id += 1
-
-
-        # Try to enter jeep
-        for jeep in self.board.jeeps:
-            if not jeep.at_path_end() and len(jeep.tourists) < 4:
-                if tourist.enter_jeep(jeep):
-                    break
-
-        self.board.tourists.append(tourist)
-
 
                 

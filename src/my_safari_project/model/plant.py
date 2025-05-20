@@ -9,6 +9,7 @@ class Plant:
         self.plant_id: int = plant_id
         self.position: Vector2 = position
         self.nutrition_level: int = 5
+        self.is_alive = True
     
     @property
     def is_empty(self) -> bool:

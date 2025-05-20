@@ -313,13 +313,16 @@ class BoardGUI:
                 py = oy + int((p.position.y - min_y) * side)
                 screen.blit(pygame.transform.scale(self.poacher, (side, side)), (px, py))
 
-        # Tourists
+        # Tourists (only if not inside a jeep)
         for t in self.board.tourists:
+            if t.in_jeep is not None:
+                continue
             tx, ty = t.position
             if min_x <= tx < max_x and min_y <= ty < max_y:
                 px = ox + int((tx - min_x) * side)
                 py = oy + int((ty - min_y) * side)
                 screen.blit(pygame.transform.scale(self.tourist, (side*2, side*2)), (px, py))
+
 
         # Waiting Tourists at Entrances
         for tourist in self.board.waiting_tourists:
