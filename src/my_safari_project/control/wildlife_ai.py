@@ -2,9 +2,14 @@ from __future__ import annotations
 from pygame.math import Vector2
 from typing import TYPE_CHECKING
 import random
+from my_safari_project.model.tourist import Tourist
+from my_safari_project.model.jeep import Jeep
+from my_safari_project.control.animal_ai import DETECTION_RADIUS
+
 
 from my_safari_project.model.poacher import Poacher
 from my_safari_project.control.animal_ai import AnimalAI
+from my_safari_project.control.tourist_ai import TouristAI
 
 if TYPE_CHECKING:
     from my_safari_project.model.board import Board
@@ -28,6 +33,12 @@ class WildlifeAI:
         self.board.wildlife_ai = self
 
         self._feedback = feedback_callback
+        self._tourist_timer = 0.0
+        self._tourist_interval = 20.0
+        self._next_tourist_id = 1
+
+        self.tourist_ai = TouristAI(board, capital, feedback_callback)
+
 
 
     # -------------------------------------------------
@@ -53,6 +64,9 @@ class WildlifeAI:
 
         # ---- Update animals ----
         self.animal_ai.update(dt)
+
+        self.tourist_ai.update(dt)
+
 
     # -------------------------------------------------
     def monthly_tick(self):
@@ -87,4 +101,5 @@ class WildlifeAI:
                     self.capital.addFunds(50)   # bounty
             else:
                 p.visible = False
+
                 

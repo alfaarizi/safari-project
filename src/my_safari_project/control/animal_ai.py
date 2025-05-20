@@ -237,9 +237,7 @@ class AnimalAI:
                                             status.target_entity = entity
                                             entity_status.reproduction_cooldown = 0.1 # Just enough to prevent double reproduction
                                             self._change_state(animal_id, AnimalState.REPRODUCING)
-                                case "jeep":
-                                    is_moving = bool(entity._path) and entity._path_index < len(entity._path)
-                                    if is_moving: animal.is_alive = False
+
             # sort detections by distance
             self.detected_entities[animal_id]["detected"].sort(key=lambda e: e["distance"])
             self.detected_entities[animal_id]["collided"].sort(key=lambda e: e["distance"])
