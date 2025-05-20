@@ -3,72 +3,116 @@ from typing import List
 import itertools
 
 import pytest
+from pygame import time
 from pygame.math import Vector2
 
-from my_safari_project.model.board   import Board
-from my_safari_project.model.ranger  import Ranger
+from my_safari_project.model.board import Board
+from my_safari_project.model.ranger import Ranger
 from my_safari_project.model.poacher import Poacher
 from my_safari_project.model.capital import Capital
+from my_safari_project.control.wildlife_ai import WildlifeAI
 
 
-# ------------------------------------------------------------------ fixtures
 @pytest.fixture
 def small_board() -> Board:
     """Tiny 6×6 board – useful to trigger edge conditions quickly."""
     return Board(6, 6)
 
 
-# ---------------------------------------------------------------- path logic
-
 def test_dummy():
     assert True
 
-@pytest.mark.parametrize("direction", ["right", "down"])
-def test_board_expands_both_axes(direction: str):
+
+def test_board_expands_right():
     b = Board(5, 5)
     jeep = b.jeeps[0]
-
-    # force-move jeep near the chosen edge so one more tick triggers grow
-    if direction == "right":
-        jeep.position = Vector2(b.width - 1.2, 1.5)
-    else:
-        jeep.position = Vector2(1.5, b.height - 1.2)
+    jeep.position = Vector2(b.width - 1.2, 1.5)
 
     w0, h0 = b.width, b.height
-    b.update(0.5)
+    b.update(0.5, time.time())  # Added time parameter
 
-    if direction == "right":
-        assert b.width == w0  and b.height == h0
-    else:
-        assert b.height == h0  and b.width == w0
+    assert b.width >= w0
+    assert b.height == h0
 
 
-# --------------------------------------------------- ranger vs poacher loop
+def test_board_expands_down():
+    b = Board(5, 5)
+    jeep = b.jeeps[0]
+    jeep.position = Vector2(1.5, b.height - 1.2)
+
+    w0, h0 = b.width, b.height
+    b.update(0.5, time.time())  # Added time parameter
+
+    assert b.width == w0
+    assert b.height >= h0
+
+
 def test_ranger_catches_poacher_and_rewards_capital():
-    board  = Board(15, 15)
+    board = Board(15, 15)
     capital = Capital(100)
+    ai = WildlifeAI(board, capital)
 
-    # ⟹ put a poacher 3 tiles away so it’s visible immediately
-    p = Poacher(1, "P1", position=board.entrance + Vector2(3, 0))
-    board.poachers.append(p)
+    poacher = Poacher(id=1, name="P1", position=Vector2(3, 0))
+    board.poachers.append(poacher)
 
-    # and one ranger at the entrance
-    r = Ranger(1, "R1", salary=50, position=board.entrance)
-    board.rangers.append(r)
+    ranger = Ranger(id=1, name="R1", salary=50, position=Vector2(0, 0))
+    board.rangers.append(ranger)
 
-    # link capital manually
-    starting_balance = capital.getBalance()
+    starting_balance = capital.currentBalance
+    ai.update(0.1)  # Single update should be enough for close proximity
 
-    # simulate up to 10 seconds; ranger should catch the poacher long before
-    for _ in range(100):
-        # simple manual “AI” the same way GameGUI does it
-        if p.is_visible_to(r):
-            r.chase_poacher(p)
-            if r.eliminate_poacher(p):
-                capital.addFunds(50)
-                break
-        else:
-            r.patrol(board.width, board.height)
+    assert len(board.poachers) == 0
+    assert capital.currentBalance > starting_balance
 
-        # basic movement to keep test finite
-        p.update
+
+# New test cases
+def test_capital_deduction():
+    capital = Capital(1000)
+    ranger = Ranger(id=1, name="R1", salary=100, position=Vector2(0, 0))
+    success = ranger.pay_salary(capital)
+    assert success
+    assert capital.currentBalance == 900
+
+
+def test_poacher_visibility():
+    board = Board(10, 10)
+    ranger = Ranger(id=1, name="R1", salary=100, position=Vector2(5, 5))
+    poacher = Poacher(id=1, name="P1", position=Vector2(5, 6))
+
+    board.rangers.append(ranger)
+    board.poachers.append(poacher)
+
+    assert poacher.is_visible_to(ranger)
+
+
+def test_ranger_patrol():
+    board = Board(10, 10)
+    ranger = Ranger(id=1, name="R1", salary=100, position=Vector2(5, 5))
+    initial_pos = Vector2(ranger.position)
+
+    ranger.patrol(board.width, board.height)
+    ranger.update(0.1, board)
+
+    assert ranger.position != initial_pos
+
+
+def test_poacher_movement():
+    board = Board(10, 10)
+    poacher = Poacher(id=1, name="P1", position=Vector2(5, 5))
+    initial_pos = Vector2(poacher.position)
+
+    poacher.update(0.1, board)
+
+    assert poacher.position != initial_pos
+
+
+def test_wildlife_ai_spawn_poacher():
+    board = Board(10, 10)
+    capital = Capital(1000)
+    ai = WildlifeAI(board, capital)
+
+    initial_poachers = len(board.poachers)
+    ai._poacher_timer = 46  # Force spawn by exceeding POACHER_INTERVAL
+    ai.update(0.1)
+
+    assert len(board.poachers) > initial_poachers

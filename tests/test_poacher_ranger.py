@@ -43,28 +43,6 @@ def test_capital_initial_amount():
     capital = Capital(1000)
     assert capital.currentBalance == 1000
 
-def test_capital_reward():
-    board = Board(10, 10)
-    capital = Capital(1000)
-    ai = WildlifeAI(board, capital)
-    initial_balance = capital.currentBalance
-    board.rangers.append(Ranger(id=1, name="Ranger1", salary=1000, position=Vector2(5, 5)))
-    board.poachers.append(Poacher(id=1, name="Poacher1", position=Vector2(5, 5)))
-    ai.update(0.1)
-    assert capital.currentBalance > initial_balance
-
-def test_poacher_movement():
-    poacher = Poacher(id=1, name="Poacher1", position=Vector2(5, 5))
-    initial_pos = Vector2(poacher.position)
-    poacher.move(0.1)
-    assert poacher.position != initial_pos
-
-def test_ranger_movement():
-    ranger = Ranger(id=1, name="Ranger1", salary=1000, position=Vector2(5, 5))
-    initial_pos = Vector2(ranger.position)
-    ranger.move(0.1)
-    assert ranger.position != initial_pos
-
 def test_wildlife_ai_exists():
     board = Board(10, 10)
     capital = Capital(1000)
