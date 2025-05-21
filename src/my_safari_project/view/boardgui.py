@@ -284,14 +284,22 @@ class BoardGUI:
             screen.blit(pygame.transform.scale(self.animals[animal.species.value], (aw, ah)), (px, py))
 
         # Jeeps
-        jw = jh = side * 2
+        jw = jh = side * 2  # Keep jeep size at 2x tile size
         for j in self.board.jeeps:
             if min_x <= j.position.x < max_x and min_y <= j.position.y < max_y:
+                # Center the jeep on the tile
                 px = ox + int((j.position.x - min_x) * side - jw / 4)
                 py = oy + int((j.position.y - min_y) * side - jh / 4)
+
+                # Scale and rotate from center
                 scaled_jeep = pygame.transform.scale(self.jeep, (jw, jh))
+                # Get rotation center
+                rot_center = scaled_jeep.get_rect(center=(jw / 2, jh / 2))
+                # Rotate around center
                 rotated_jeep = pygame.transform.rotate(scaled_jeep, -j.heading)
-                screen.blit(rotated_jeep, (px, py))
+                # Adjust position to maintain center
+                rot_rect = rotated_jeep.get_rect(center=rot_center.center)
+                screen.blit(rotated_jeep, (px + rot_rect.x, py + rot_rect.y))
 
         # Rangers
         for r in self.board.rangers:

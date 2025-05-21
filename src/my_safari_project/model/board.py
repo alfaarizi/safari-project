@@ -126,9 +126,9 @@ class Board:
         # Make road tiles walkable
         fx, fy = int(cur.x), int(cur.y)
         fld = self.fields[fy][fx]
-        fld.set_terrain(TerrainType.ROAD)  # Use set_terrain instead of direct assignment
-        fld.set_obstacle(False)  # Make it walkable
-        fld.movement_cost = 0.5  # Fast movement on roads
+        fld.set_terrain(TerrainType.ROAD)  # Use set_terrain to ensure proper setup
+        fld.is_obstacle = False
+        fld.walkable = True
 
     def add_road(self, x: int, y: int, road_type: str) -> bool:
         """Add a road from the shop at the specified position."""
