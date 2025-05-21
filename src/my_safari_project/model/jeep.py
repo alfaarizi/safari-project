@@ -34,51 +34,56 @@ class Jeep:
             self.heading = math.degrees(math.atan2(direction.y, direction.x))
 
     def update(self, dt: float, now: float, other_jeeps: List["Jeep"]):
-        # If path completed or no path, find new path
+        if self not in self.board.jeeps:
+            return
+
+        for other in other_jeeps:
+            if other != self and other in self.board.jeeps:
+                separation = self.position.distance_to(other.position)
+                if separation < 0.8:  # crash threshold
+                    # Remove both jeeps
+                    if self in self.board.jeeps:
+                        for t in self.tourists[:]:
+                            t.exit_jeep()
+                        self.board.jeeps.remove(self)
+                    if other in self.board.jeeps:
+                        for t in other.tourists[:]:
+                            t.exit_jeep()
+                        self.board.jeeps.remove(other)
+                    from my_safari_project.audio import play_jeep_crash
+                    play_jeep_crash()
+                    if hasattr(self.board, "game_gui"):
+                        self.board.game_gui._feedback("Jeep crash! Passengers are now on foot.")
+                    return  # Stop further processing for this jeep
+
+        # Path continuation
         if not self._path or self._path_index >= len(self._path) - 1:
             if self.board:
                 current_pos = self.position
-                # Find possible endpoints
                 end_points = []
                 for road in self.board.roads:
-                    if len(road.neighbors) == 1:  # End of road
+                    if len(road.neighbors) == 1:
                         road_pos = Vector2(road.pos)
-                        if road_pos.distance_to(current_pos) > 5:  # Minimum distance check
+                        if road_pos.distance_to(current_pos) > 5:
                             end_points.append(road_pos)
 
                 if end_points:
-                    # Choose random endpoint and build new path
                     new_end = random.choice(end_points)
                     new_path = self.board._longest_path(current_pos)
                     if new_path and len(new_path) > 1:
                         self.set_path(new_path)
                         return
             return
+
         if self.at_path_end() and self.tourists:
             for t in self.tourists[:]:
                 t.exit_jeep()
 
-        # Get next waypoint
         next_point = self._path[self._path_index + 1]
         direction = next_point - self.position
         distance = direction.length()
-
-        # Update heading
         self.heading = math.degrees(math.atan2(direction.y, direction.x))
 
-        # Check for collisions
-        collision_detected = False
-        for other in other_jeeps:
-            if other != self:
-                separation = self.position.distance_to(other.position)
-                if separation < 1.0:  # Collision threshold
-                    collision_detected = True
-                    if not self.is_reversing:
-                        self.is_reversing = True
-                        self.reverse_timer = 2.0
-                    break
-
-        # Handle movement
         move_speed = self.speed * dt
         if self.is_reversing:
             if self.reverse_timer > 0:
@@ -96,7 +101,8 @@ class Jeep:
                 move_dir.scale_to_length(distance)
             self.position += move_dir
             self.last_point = Vector2(self.position)
-        # Tourist pickup at entrance
+
+        # Pickup tourists
         for entrance in self.board.entrances:
             if self.position.distance_to(entrance) < 0.5:
                 for tourist in self.board.waiting_tourists[:]:
@@ -104,14 +110,13 @@ class Jeep:
                         if tourist.enter_jeep(self):
                             self.board.waiting_tourists.remove(tourist)
 
-
         if distance < 0.05 and not self.is_reversing:
-            self.position = Vector2(next_point)  # snap exactly to target
+            self.position = Vector2(next_point)
             self._path_index += 1
 
-        # Check if reached waypoint
         if distance < 0.1 and not self.is_reversing:
             self._path_index += 1
+
 
     def _should_reverse(self, other: "Jeep") -> bool:
         my_progress = self._path_index / len(self._path)
