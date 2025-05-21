@@ -25,7 +25,7 @@ LABEL_FONT_SIZE   = 28
 
 # Simulation constants
 HUNGER_THRESHOLD, THIRST_THRESHOLD                  = 6, 6
-REPRODUCTION_COOLDOWN, REPRODUCTION_COOLDOWN_RATE   = 60.0, 0.5
+REPRODUCTION_COOLDOWN, REPRODUCTION_COOLDOWN_RATE   = 30.0, 1.0
 MIGRATION_COOLDOWN, MIGRATION_COOLDOWN_RATE         = 10.0, 0.5
 MIN_WANDER_DISTANCE, MAX_WANDER_DISTANCE            = 5.0, 15.0
 STATE_TIMEOUT, MEMORY_TIMEOUT                       = 20.0, 120.0
@@ -110,6 +110,7 @@ class AnimalAI:
 
     def update(self, dt: float) -> None:
         self.simulation_time += dt
+        self._remove_dead_animals()
         self._process_stats(dt)        
         self._process_collisions()
         self._process_behaviours(dt)
@@ -280,6 +281,7 @@ class AnimalAI:
                             mate_status = self.animal_states[status.target_entity.animal_id]
                             mate_status.reproduction_cooldown = REPRODUCTION_COOLDOWN
                             self.board.animals.append(offspring)
+                            self.animal_states[offspring.animal_id] = AnimalStatus()
                 self._next_state(animal_id)
                 continue
 
@@ -303,6 +305,7 @@ class AnimalAI:
             self._change_state(animal_id, AnimalState.SEEKING_FOOD)
             return True
         return False
+    
         
     def _next_state(self, animal_id: int) -> None:
         animal = self.collision_shapes[animal_id]["animal"]
@@ -310,12 +313,19 @@ class AnimalAI:
         # check needs
         needs_water     = animal.thirst >= THIRST_THRESHOLD and status.memory["water"]
         needs_food      = animal.hunger >= HUNGER_THRESHOLD and status.memory["food"]
-        can_reproduce   = (
-            animal.hunger < HUNGER_THRESHOLD and animal.thirst < THIRST_THRESHOLD and
-            status.reproduction_cooldown <= 0 and animal.is_adult() and
-            any(entity.is_adult() for entity,_ in status.memory["same_species"])
+        can_reproduce = (
+            animal.hunger < HUNGER_THRESHOLD and 
+            animal.thirst < THIRST_THRESHOLD and 
+            status.reproduction_cooldown <= 0 and 
+            animal.is_adult() and 
+            any(entity.is_adult() for entity, _ in status.memory["same_species"])
         )
-        can_rest        = animal.hunger < HUNGER_THRESHOLD * 0.7 and animal.thirst < THIRST_THRESHOLD * 0.7
+
+        can_rest = (
+            animal.hunger < HUNGER_THRESHOLD * 0.3 and 
+            animal.thirst < THIRST_THRESHOLD * 0.3
+        )
+
         can_migrate     = len(status.memory["same_species"]) > 0 and status.migration_cooldown <= 0
         # prioritize states
         if needs_water:
@@ -352,20 +362,21 @@ class AnimalAI:
                 )
                 if closest: status.target = closest[0].position
             case AnimalState.SEEKING_MATE:
+                potential_mates = [
+                    e for e, _ in status.memory["same_species"]
+                    if e.is_adult() and self.animal_states.get(e.animal_id, AnimalStatus()).reproduction_cooldown <= 0
+                ]
                 closest = min(
-                    [e for e,_ in status.memory["same_species"] if e.is_adult() and animal_id in self.animal_states and self.animal_states[e.animal_id].reproduction_cooldown <= 0],
+                    potential_mates,
                     key=lambda e: animal.position.distance_squared_to(e.position),
                     default=None
                 )
+
                 if closest: status.target = closest.position
             case AnimalState.MIGRATING:
-                oldest = max(
-                    status.memory["same_species"],
-                    key=lambda e: e[0].age,
-                    default=None
-                )
-                if oldest:
-                    direction = oldest[0].position - animal.position # limit migration distance, ensure target stays within boundaries
+                if status.memory["same_species"]:
+                    leader = max(status.memory["same_species"], key=lambda e: e[0].age)[0]
+                    direction = leader.position - animal.position
                     if direction.length_squared() > 0:
                         migration_distance = min(direction.length(), random.uniform(5.0, 10.0))
                         direction = direction.normalize() * migration_distance
@@ -374,14 +385,21 @@ class AnimalAI:
                         max(board_margin, min(self.board.width - board_margin, animal.position.x + direction.x)),
                         max(board_margin, min(self.board.height - board_margin, animal.position.y + direction.y))
                     )
-                    status.target, status.target_entity = target_pos, oldest[0]
+                    status.target, status.target_entity = target_pos, leader
+                    status.migration_cooldown = MIGRATION_COOLDOWN
+
             case AnimalState.WANDER:
-                distance = random.uniform(MIN_WANDER_DISTANCE, MAX_WANDER_DISTANCE)
-                angle = random.uniform(0, 2 * math.pi)
-                status.target = Vector2(
-                    animal.position.x + distance * math.cos(angle),
-                    animal.position.y + distance * math.sin(angle)
-                )
+                if status.memory["same_species"]:
+                    leader = max(status.memory["same_species"], key=lambda e: e[0].age)[0]
+                    offset = Vector2(random.uniform(-3, 3), random.uniform(-3, 3))  # stay near leader
+                    status.target = leader.position + offset
+                else:
+                    distance = random.uniform(MIN_WANDER_DISTANCE, MAX_WANDER_DISTANCE)
+                    angle = random.uniform(0, 2 * math.pi)
+                    status.target = Vector2(
+                        animal.position.x + distance * math.cos(angle),
+                        animal.position.y + distance * math.sin(angle)
+                    )
         animal.speed = status.state.speed
         status.timer = status.state.time
         if status.target: animal.target = status.target
@@ -438,3 +456,14 @@ class AnimalAI:
                 render_text(state_text, self.state_label, (255, 255, 0), (x, y + col_radius + 10))
                 render_text(stats_text, self.state_label, (255, 255, 255), (x, y + col_radius + 25))
                 render_text(timer_text, self.state_label, (255, 255, 255), (x, y + col_radius + 40))
+
+    def _remove_dead_animals(self) -> None:
+        for animal in self.board.animals[:]:  # work on a copy
+            if not animal.is_alive:
+                tx, ty = int(animal.position.x), int(animal.position.y)
+                # Safely remove from field
+                if 0 <= ty < len(self.board.fields) and 0 <= tx < len(self.board.fields[0]):
+                    if animal in self.board.fields[ty][tx].objects_on_field:
+                        self.board.fields[ty][tx].remove_object(animal)
+                self.board.animals.remove(animal)
+                self.animal_states.pop(animal.animal_id, None)
