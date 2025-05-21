@@ -7,7 +7,7 @@ from pygame.math import Vector2
 
 
 from my_safari_project.model.animal import Animal
-from my_safari_project.model.field import Field
+from my_safari_project.model.field import Field, TerrainType
 from my_safari_project.model.road  import Road, RoadType
 from my_safari_project.model.jeep  import Jeep
 from my_safari_project.model.tourist  import Tourist
@@ -48,7 +48,7 @@ class Board:
         self.animals = []
         self.tourists:List[Tourist] = []
         self.waiting_tourists = []
-
+        self._generate_terrain()
 
 
         # ------------------------------------------------------------------
@@ -96,8 +96,8 @@ class Board:
 
     def _lay_segment(self, a: Vector2, b: Vector2):
         x, y = int(a.x), int(a.y)
-        dx   = 1 if b.x > a.x else -1 if b.x < a.x else 0
-        dy   = 1 if b.y > a.y else -1 if b.y < a.y else 0
+        dx = 1 if b.x > a.x else -1 if b.x < a.x else 0
+        dy = 1 if b.y > a.y else -1 if b.y < a.y else 0
 
         # horizontal
         while x != int(b.x):
@@ -114,7 +114,7 @@ class Board:
                 if r.pos == pos:
                     return r
             rt = (RoadType.STRAIGHT_H if pos.y == nxt.y
-                                   else RoadType.STRAIGHT_V)
+                  else RoadType.STRAIGHT_V)
             road = Road(pos, rt)
             self.roads.append(road)
             return road
@@ -122,11 +122,13 @@ class Board:
         t1, t2 = get_or_create(cur), get_or_create(nxt)
         t1.add_neighbor(t2.pos)
         t2.add_neighbor(t1.pos)
-        # added to mark the underlying field as road & non-walkable
+
+        # Make road tiles walkable
         fx, fy = int(cur.x), int(cur.y)
         fld = self.fields[fy][fx]
-        fld.terrain_type = "ROAD"
-        fld.set_obstacle(True)
+        fld.set_terrain(TerrainType.ROAD)  # Use set_terrain to ensure proper setup
+        fld.is_obstacle = False
+        fld.walkable = True
 
     def add_road(self, x: int, y: int, road_type: str) -> bool:
         """Add a road from the shop at the specified position."""
@@ -309,3 +311,37 @@ class Board:
         if self.is_blocked(tile):
             return False                 # road or existing entity
         return True                     # empty grass
+
+    def _generate_terrain(self):
+        # Create hills
+        for _ in range(int(self.width * self.height * 0.05)):  # 5% hills
+            x = random.randint(0, self.width - 1)
+            y = random.randint(0, self.height - 1)
+            field = self.fields[y][x]
+            if field.terrain_type == TerrainType.GRASS:
+                field.set_terrain(TerrainType.HILL)
+                field.elevation = random.randint(1, 3)  # Integer elevation values
+
+                # Create hill cluster with integer coordinates
+                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                    nx, ny = x + dx, y + dy
+                    if (0 <= nx < self.width and 0 <= ny < self.height and
+                            random.random() < 0.6):  # 60% chance for each neighbor
+                        neighbor = self.fields[ny][nx]
+                        if neighbor.terrain_type == TerrainType.GRASS:
+                            neighbor.set_terrain(TerrainType.HILL)
+                            neighbor.elevation = max(1, field.elevation - 1)  # Decrease elevation
+
+        # Create rivers with integer coordinates
+        for _ in range(2):  # 2 rivers
+            x = random.randint(0, self.width - 1)  # Start at top edge
+            y = 0
+            while y < self.height:
+                field = self.fields[y][x]
+                if field.terrain_type == TerrainType.GRASS:
+                    field.set_terrain(TerrainType.RIVER)
+                    field.elevation = 0  # Rivers at ground level
+
+                # Meander river with integer coordinates
+                x = max(0, min(self.width - 1, x + random.choice([-1, 0, 1])))
+                y += 1
