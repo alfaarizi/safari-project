@@ -2,10 +2,14 @@
 
 import random
 from enum import Enum
+import json
+import os
 
 from my_safari_project.audio import play_jeep_start
 from my_safari_project.model.jeep import Jeep
 from pygame.math import Vector2
+
+
 
 # Model
 from my_safari_project.model.timer   import Timer, TIME_SCALE
@@ -13,6 +17,12 @@ from my_safari_project.model.board   import Board
 from my_safari_project.model.capital import Capital
 from my_safari_project.model.poacher import Poacher
 from my_safari_project.model.ranger  import Ranger
+from my_safari_project.model.tourist import Tourist
+from my_safari_project.model.road import Road, RoadType
+from my_safari_project.model.plant import Plant
+from my_safari_project.model.pond import Pond
+
+
 # Control
 from my_safari_project.control.wildlife_ai import WildlifeAI
 
@@ -258,11 +268,6 @@ class GameController:
         if getattr(self, "game_state", None) == GameState.PAUSED:
             self.game_state = GameState.RUNNING
 
-    def save_game(self, file_path: str):
-        pass
-
-    def load_game(self, file_path: str):
-        pass
 
     def _monthly_update(self):
         # pay salaries, update budget, wildlife monthly
@@ -337,5 +342,178 @@ class GameController:
         self.board.jeeps.append(jeep)
         play_jeep_start()
         return True
+
+    def save_game(self, file_path: str):
+        data = {
+            "difficulty": self.difficulty.name,
+            "time": self.timer.elapsed_seconds,
+            "capital": self.capital.getBalance(),
+            "animals": [
+                {
+                    "id": a.animal_id,
+                    "species": a.species.name,
+                    "x": a.position.x,
+                    "y": a.position.y,
+                    "speed": a.speed,
+                    "value": a.value,
+                    "lifespan": a.lifespan,
+                    "age": a.age,
+                    "hunger": a.hunger,
+                    "thirst": a.thirst,
+                } for a in self.board.animals
+            ],
+            "rangers": [
+                {
+                    "id": r.id,
+                    "name": r.name,
+                    "salary": r.salary,
+                    "x": r.position.x,
+                    "y": r.position.y,
+                } for r in self.board.rangers
+            ],
+            "jeep_count": len(self.board.jeeps)
+            ,
+            "tourists": [
+                {
+                    "id": t.id,
+                    "x": t.position.x,
+                    "y": t.position.y,
+                    "seen_animals": list(t.seen_animals),
+                    "movement_state": t.movement_state,
+                    "timer": t.timer,
+                    "wander_timer": t.wander_timer,
+                    "wander_duration": t.wander_duration,
+                    "target": [t.target.x, t.target.y] if t.target else None
+                } for t in self.board.tourists
+],
+            "plants": [
+                {
+                    "id": p.plant_id,
+                    "x": p.position.x,
+                    "y": p.position.y,
+                    "nutrition": p.nutrition_level
+                } for p in self.board.plants
+            ],
+            "ponds": [
+                {
+                    "id": p.pond_id,
+                    "x": p.position.x,
+                    "y": p.position.y,
+                    "water": p.water_level
+                } for p in self.board.ponds
+            ],
+            "roads": [
+                {
+                    "x": r.pos.x,
+                    "y": r.pos.y,
+                    "type": r.type.name
+                } for r in self.board.roads
+    ]
+
+        }
+        os.makedirs("saves", exist_ok=True)
+        with open(file_path, "w") as f:
+            json.dump(data, f, indent=2)
+
+    def load_game(self, file_path: str):
+        with open(file_path, "r") as f:
+            data = json.load(f)
+
+         # Load difficulty
+        self.difficulty = DifficultyLevel[data.get("difficulty", "NORMAL")]
+        (self.visits_req,
+        self.herb_req,
+        self.carn_req,
+        self.cap_req) = self.difficulty.thresholds
+        self.months_needed = self.difficulty.required_months
+        
+        self.timer.elapsed_seconds = data["time"]
+        self.capital = Capital(data["capital"])
+
+        self.board.animals.clear()
+        for ad in data["animals"]:
+            self.spawn_animal(
+                species_name=ad["species"],
+                position=Vector2(ad["x"], ad["y"])
+            )
+            a = self.board.animals[-1]
+            a.age, a.hunger, a.thirst = ad["age"], ad["hunger"], ad["thirst"]
+
+        self.board.rangers.clear()
+        for rd in data["rangers"]:
+            self.spawn_ranger(position=Vector2(rd["x"], rd["y"]))
+
+
+        self.board.tourists.clear()
+        for td in data["tourists"]:
+            tourist = Tourist(td["id"], Vector2(td["x"], td["y"]), board=self.board)
+            tourist.seen_animals = set(td.get("seen_animals", []))
+            tourist.movement_state = td.get("movement_state", "waiting")
+            tourist.timer = td.get("timer", 0.0)
+            tourist.wander_timer = td.get("wander_timer", 0.0)
+            tourist.wander_duration = td.get("wander_duration", 15.0)
+            target = td.get("target")
+            if target:
+                tourist.target = Vector2(target[0], target[1])
+            self.board.tourists.append(tourist)
+
+        # Clear existing
+        self.board.plants.clear()
+        self.board.ponds.clear()
+        # 1. Load all roads
+        self.board.roads.clear()
+        for rd in data["roads"]:
+            pos = Vector2(rd["x"], rd["y"])
+            road = Road(pos, RoadType[rd["type"]])
+            self.board.roads.append(road)
+            fx, fy = int(pos.x), int(pos.y)
+            self.board.fields[fy][fx].terrain_type = "ROAD"
+            self.board.fields[fy][fx].set_obstacle(True)
+
+        # 2. STITCH ROAD NETWORK properly
+        for road in self.board.roads:
+            self.board._stitch_into_network(road)
+
+        self.board.jeeps.clear()
+        jeep_count = data.get("jeep_count", 0)
+        self.board._spawn_jeeps(n_jeeps=jeep_count)
+
+
+        # Restore Plants
+        for pd in data.get("plants", []):
+            pos = Vector2(pd["x"], pd["y"])
+            plant = Plant(pd["id"], pos)
+            plant.nutrition_level = pd["nutrition"]
+            self.board.plants.append(plant)
+            tx, ty = int(pos.x), int(pos.y)
+            self.board.fields[ty][tx].add_object(plant)
+
+        # Restore Ponds
+        for pd in data.get("ponds", []):
+            pos = Vector2(pd["x"], pd["y"])
+            pond = Pond(pd["id"], pos)
+            pond.water_level = pd["water"]
+            self.board.ponds.append(pond)
+            tx, ty = int(pos.x), int(pos.y)
+            self.board.fields[ty][tx].add_object(pond)
+
+        # Reassign tourists to jeeps after all are created
+        for tourist in self.board.tourists:
+            if tourist.movement_state == "in_jeep":
+                nearest_jeep = min(
+                    self.board.jeeps,
+                    key=lambda j: j.position.distance_to(tourist.position),
+                    default=None
+                )
+                if nearest_jeep and len(nearest_jeep.tourists) < 4:
+                    tourist.in_jeep = nearest_jeep
+                    nearest_jeep.tourists.append(tourist)
+                else:
+                    # fallback: treat as waiting tourist if no jeep is available
+                    tourist.movement_state = "waiting"
+                    self.board.waiting_tourists.append(tourist)
+
+
+
 
 

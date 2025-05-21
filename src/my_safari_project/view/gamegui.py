@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import sys
 from typing import List
+import tkinter as tk
+from tkinter import filedialog
 
 import pygame
 from pygame.math import Vector2
@@ -112,6 +114,9 @@ class GameGUI:
         self.board_gui.min_y = 0
         self.board_gui.max_y = controller.board.height
 
+        self.save_btn_rect = pygame.Rect(0, 0, 120, 32)  # Adjust width as needed
+
+
         # Calculate initial zoom to fit board width
         board_width_pixels = BOARD_RECT.width
         board_height_pixels = BOARD_RECT.height
@@ -216,6 +221,19 @@ class GameGUI:
             #  LEFT-CLICK  (button 1)
             # -----------------------------------------------------------------
             elif ev.type == pygame.MOUSEBUTTONDOWN and ev.button == 1:
+                if self.save_btn_rect.collidepoint(ev.pos):
+                    root = tk.Tk()
+                    root.withdraw()
+                    file_path = filedialog.asksaveasfilename(
+                        defaultextension=".json",
+                        initialdir="saves",
+                        filetypes=[("JSON Files", "*.json")]
+                    )
+                    if file_path:
+                        self.control.save_game(file_path)
+                        self._feedback("Game saved successfully!")
+                    return
+
                 if self.control.chip_placement_mode:
                     world_pos = self.board_gui.screen_to_world(ev.pos)
                     if world_pos:
@@ -629,6 +647,20 @@ class GameGUI:
         for k in list(game_time.keys())[:4]:
             x += oval(f"{k}: {game_time[k]}", x) + margin
 
+         # Save Game button
+        save_label = "Save Game"
+        surf = self.font_medium.render(save_label, True, (255, 255, 255))
+        sw = surf.get_width() + 30
+        sh = 40
+        save_x = x
+        save_y = SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - sh) // 2
+        self.save_btn_rect = pygame.Rect(save_x, save_y, sw, sh)
+
+        pygame.draw.ellipse(self.screen, (40, 90, 140), self.save_btn_rect)
+        pygame.draw.ellipse(self.screen, (255, 255, 255), self.save_btn_rect, 2)
+        self.screen.blit(surf, surf.get_rect(center=self.save_btn_rect.center))
+
+        x += sw + margin  # Shift for date/time blocks
         box_y = SCREEN_H - BOTTOM_BAR_H + 4
         box_x = SCREEN_W - SIDE_PANEL_W - 140
         for i, txt in enumerate((date, time_s)):

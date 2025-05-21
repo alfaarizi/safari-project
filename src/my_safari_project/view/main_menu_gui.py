@@ -169,13 +169,17 @@ def main_menu():
         root = tk.Tk()
         root.withdraw()
         file_path = filedialog.askopenfilename(
-            title="Select a saved game file",
-            filetypes=[("Save Files", "*.sav *.json *.txt"), ("All Files", "*.*")]
+            initialdir="saves",
+            title="Load Saved Game",
+            filetypes=[("Save Files", "*.json")]
         )
         if file_path:
-            print(f"Selected save file: {file_path}")
-        else:
-            print("No file selected.")
+            difficulty = difficulty_levels[selected_difficulty]
+            pygame.mixer.music.stop()
+            pygame.quit()
+            control = GameController(difficulty)
+            control.load_game(file_path)
+            control.run()
 
     def quit_game():
         pygame.mixer.music.stop()

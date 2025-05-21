@@ -1,0 +1,491 @@
+{
+  "time": 339.71700000000607,
+  "capital": 8040.0,
+  "animals": [
+    {
+      "id": 3,
+      "species": "ELEPHANT",
+      "x": 27.044026388174018,
+      "y": 15.189380172626056,
+      "speed": 0.8,
+      "value": 300,
+      "lifespan": 18,
+      "age": 7.597589999999974,
+      "hunger": 5.551999999999963,
+      "thirst": 6.64416000000007
+    },
+    {
+      "id": 6,
+      "species": "LION",
+      "x": 20.89111964569142,
+      "y": 4.836393298744206,
+      "speed": 0.8,
+      "value": 150,
+      "lifespan": 14,
+      "age": 6.618389999999992,
+      "hunger": 4.677869999999548,
+      "thirst": 10.0
+    },
+    {
+      "id": 4,
+      "species": "TIGER",
+      "x": 26.907465324215824,
+      "y": 13.78778451869438,
+      "speed": 0.8,
+      "value": 180,
+      "lifespan": 12,
+      "age": 2.1609599999999936,
+      "hunger": 3.6016000000000377,
+      "thirst": 5.762560000000028
+    },
+    {
+      "id": 5,
+      "species": "ELEPHANT",
+      "x": 2.8490501408793745,
+      "y": 18.109196360231262,
+      "speed": 0.8,
+      "value": 300,
+      "lifespan": 19,
+      "age": 1.941839999999995,
+      "hunger": 3.2364000000000295,
+      "thirst": 5.1782400000000175
+    },
+    {
+      "id": 5,
+      "species": "GIRAFFE",
+      "x": 20.892242627927587,
+      "y": 14.427946901801063,
+      "speed": 0,
+      "value": 150,
+      "lifespan": 18,
+      "age": 1.7401199999999963,
+      "hunger": 2.9002000000000265,
+      "thirst": 4.6403200000000195
+    }
+  ],
+  "rangers": [
+    {
+      "id": 1,
+      "name": "R1",
+      "salary": 50,
+      "x": 2.070029559449834,
+      "y": 6.7334325214215855
+    },
+    {
+      "id": 2,
+      "name": "R2",
+      "salary": 50,
+      "x": 29.11583538872452,
+      "y": 23.720220337937562
+    },
+    {
+      "id": 3,
+      "name": "R3",
+      "salary": 50,
+      "x": 32.34509583507908,
+      "y": 15.633888093250048
+    },
+    {
+      "id": 4,
+      "name": "R4",
+      "salary": 50,
+      "x": 16.78496866374511,
+      "y": 17.516217721513513
+    },
+    {
+      "id": 5,
+      "name": "R5",
+      "salary": 50,
+      "x": 18.16198207371825,
+      "y": 5.415457956088012
+    },
+    {
+      "id": 6,
+      "name": "R6",
+      "salary": 50,
+      "x": 17.62868926374119,
+      "y": 23.734444480434036
+    },
+    {
+      "id": 7,
+      "name": "R7",
+      "salary": 50,
+      "x": 22.796949974788625,
+      "y": 30.108673168834162
+    }
+  ],
+  "jeeps": [
+    {
+      "id": 1,
+      "x": 15.919192618290973,
+      "y": 6.5
+    },
+    {
+      "id": 2,
+      "x": 11.859367553651888,
+      "y": 12.499999999999904
+    },
+    {
+      "id": 3,
+      "x": 10.981674359959888,
+      "y": 12.5
+    },
+    {
+      "id": 4,
+      "x": 24.025142269851045,
+      "y": 25.522149613332004
+    },
+    {
+      "id": 5,
+      "x": 1.5174831968359515,
+      "y": 30.5
+    }
+  ],
+  "tourists": [
+    {
+      "id": 58,
+      "x": 11.859367553651888,
+      "y": 12.499999999999904,
+      "seen_animals": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        9
+      ],
+      "movement_state": "in_jeep",
+      "timer": 0.0,
+      "wander_timer": 0.0,
+      "wander_duration": 18.938206853495988,
+      "target": null
+    },
+    {
+      "id": 66,
+      "x": 11.859367553651888,
+      "y": 12.499999999999904,
+      "seen_animals": [
+        1,
+        2,
+        3,
+        4,
+        6,
+        9
+      ],
+      "movement_state": "in_jeep",
+      "timer": 0.0,
+      "wander_timer": 0.0,
+      "wander_duration": 15.89374908497775,
+      "target": null
+    },
+    {
+      "id": 68,
+      "x": 11.859367553651888,
+      "y": 12.499999999999904,
+      "seen_animals": [
+        1,
+        2,
+        3,
+        4,
+        6
+      ],
+      "movement_state": "in_jeep",
+      "timer": 0.0,
+      "wander_timer": 0.0,
+      "wander_duration": 17.976147196107675,
+      "target": null
+    },
+    {
+      "id": 1,
+      "x": 11.859367553651888,
+      "y": 12.499999999999904,
+      "seen_animals": [
+        1,
+        3,
+        4,
+        6
+      ],
+      "movement_state": "in_jeep",
+      "timer": 0.0,
+      "wander_timer": 0.0,
+      "wander_duration": 22.365869115135773,
+      "target": null
+    },
+    {
+      "id": 13,
+      "x": 10.981674359959888,
+      "y": 12.5,
+      "seen_animals": [],
+      "movement_state": "in_jeep",
+      "timer": 0.0,
+      "wander_timer": 0.0,
+      "wander_duration": 24.493380629067666,
+      "target": null
+    },
+    {
+      "id": 16,
+      "x": 10.981674359959888,
+      "y": 12.5,
+      "seen_animals": [],
+      "movement_state": "in_jeep",
+      "timer": 0.0,
+      "wander_timer": 0.0,
+      "wander_duration": 15.25165005703498,
+      "target": null
+    },
+    {
+      "id": 18,
+      "x": 10.981674359959888,
+      "y": 12.5,
+      "seen_animals": [],
+      "movement_state": "in_jeep",
+      "timer": 0.0,
+      "wander_timer": 0.0,
+      "wander_duration": 15.698360592806356,
+      "target": null
+    },
+    {
+      "id": 24,
+      "x": 10.981674359959888,
+      "y": 12.5,
+      "seen_animals": [],
+      "movement_state": "in_jeep",
+      "timer": 0.0,
+      "wander_timer": 0.0,
+      "wander_duration": 20.031297918149416,
+      "target": null
+    },
+    {
+      "id": 26,
+      "x": 17.686661810453106,
+      "y": 28.751507898708702,
+      "seen_animals": [],
+      "movement_state": "exiting",
+      "timer": 3.8840000000000536,
+      "wander_timer": 27.672000000000086,
+      "wander_duration": 25.290956216653388,
+      "target": [
+        44.0,
+        30.0
+      ]
+    },
+    {
+      "id": 28,
+      "x": 18.291573955796185,
+      "y": 23.29081321407218,
+      "seen_animals": [],
+      "movement_state": "exiting",
+      "timer": 1.4000000000000283,
+      "wander_timer": 25.18800000000009,
+      "wander_duration": 22.19774853922182,
+      "target": [
+        44.0,
+        24.0
+      ]
+    },
+    {
+      "id": 34,
+      "x": 42.22070247524502,
+      "y": 24.882256767377722,
+      "seen_animals": [],
+      "movement_state": "exiting",
+      "timer": 25.679999999999968,
+      "wander_timer": 22.479999999999936,
+      "wander_duration": 22.422061505179578,
+      "target": [
+        44.0,
+        24.0
+      ]
+    },
+    {
+      "id": 36,
+      "x": 38.51052984760851,
+      "y": 29.076815616743914,
+      "seen_animals": [],
+      "movement_state": "wandering",
+      "timer": 0.0,
+      "wander_timer": 26.79999999999997,
+      "wander_duration": 28.959979118258403,
+      "target": [
+        36.334435665688716,
+        27.91756179522714
+      ]
+    },
+    {
+      "id": 37,
+      "x": 0.15265013464052413,
+      "y": 17.95635844972497,
+      "seen_animals": [
+        5
+      ],
+      "movement_state": "wandering",
+      "timer": 0.0,
+      "wander_timer": 12.74399999999998,
+      "wander_duration": 24.908722156974726,
+      "target": [
+        0.0,
+        16.348028749332254
+      ]
+    },
+    {
+      "id": 38,
+      "x": 0.013402137761807436,
+      "y": 4.176476164877488,
+      "seen_animals": [
+        3,
+        5
+      ],
+      "movement_state": "wandering",
+      "timer": 0.0,
+      "wander_timer": 8.39999999999999,
+      "wander_duration": 21.096975902403077,
+      "target": [
+        0.0,
+        5.746315542549841
+      ]
+    },
+    {
+      "id": 39,
+      "x": 0.6451309387028341,
+      "y": 3.6495156467525014,
+      "seen_animals": [
+        3,
+        5
+      ],
+      "movement_state": "wandering",
+      "timer": 0.0,
+      "wander_timer": 8.39999999999999,
+      "wander_duration": 17.773049640765063,
+      "target": [
+        0.0,
+        5.017387098222594
+      ]
+    },
+    {
+      "id": 40,
+      "x": 3.2019350952750125,
+      "y": 11.844459890433038,
+      "seen_animals": [
+        3,
+        5
+      ],
+      "movement_state": "wandering",
+      "timer": 0.0,
+      "wander_timer": 8.39999999999999,
+      "wander_duration": 28.09351197101322,
+      "target": [
+        3.6547527353526883,
+        12.31197832610739
+      ]
+    },
+    {
+      "id": 41,
+      "x": 2.8587274642362757,
+      "y": 8.636087547552203,
+      "seen_animals": [
+        5
+      ],
+      "movement_state": "wandering",
+      "timer": 0.0,
+      "wander_timer": 8.39999999999999,
+      "wander_duration": 15.745794287181162,
+      "target": [
+        3.3455224974829934,
+        9.019523252372906
+      ]
+    },
+    {
+      "id": 42,
+      "x": 2.3761311140829253,
+      "y": 25.96212057274467,
+      "seen_animals": [
+        5
+      ],
+      "movement_state": "wandering",
+      "timer": 0.0,
+      "wander_timer": 12.74399999999998,
+      "wander_duration": 16.4134088995501,
+      "target": [
+        3.073109951896736,
+        26.04059608314404
+      ]
+    },
+    {
+      "id": 43,
+      "x": 0.9636543678883467,
+      "y": 22.278307039755177,
+      "seen_animals": [
+        5
+      ],
+      "movement_state": "wandering",
+      "timer": 0.0,
+      "wander_timer": 12.74399999999998,
+      "wander_duration": 24.389796405610078,
+      "target": [
+        2.306264783937945,
+        20.338731357660194
+      ]
+    },
+    {
+      "id": 44,
+      "x": 0.11030770627129721,
+      "y": 28.83932922456363,
+      "seen_animals": [],
+      "movement_state": "wandering",
+      "timer": 0.0,
+      "wander_timer": 0.5920000000000001,
+      "wander_duration": 20.189486050935745,
+      "target": [
+        0.0,
+        30.86986651199846
+      ]
+    },
+    {
+      "id": 45,
+      "x": 24.025142269851045,
+      "y": 25.522149613332004,
+      "seen_animals": [],
+      "movement_state": "in_jeep",
+      "timer": 0.0,
+      "wander_timer": 0.0,
+      "wander_duration": 24.02649693877501,
+      "target": null
+    },
+    {
+      "id": 46,
+      "x": 24.025142269851045,
+      "y": 25.522149613332004,
+      "seen_animals": [],
+      "movement_state": "in_jeep",
+      "timer": 0.0,
+      "wander_timer": 0.0,
+      "wander_duration": 28.090675516719962,
+      "target": null
+    },
+    {
+      "id": 47,
+      "x": -0.25109777091842933,
+      "y": 31.513843439194265,
+      "seen_animals": [],
+      "movement_state": "wandering",
+      "timer": 0.0,
+      "wander_timer": 0.5920000000000001,
+      "wander_duration": 28.889264603768968,
+      "target": [
+        0.886260943281112,
+        31.985942715911833
+      ]
+    },
+    {
+      "id": 48,
+      "x": 15.919192618290973,
+      "y": 6.5,
+      "seen_animals": [],
+      "movement_state": "in_jeep",
+      "timer": 0.0,
+      "wander_timer": 0.0,
+      "wander_duration": 29.4448408574269,
+      "target": null
+    }
+  ]
+}

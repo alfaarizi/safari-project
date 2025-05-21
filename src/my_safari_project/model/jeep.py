@@ -92,6 +92,8 @@ class Jeep:
                 self.is_reversing = False
         elif distance > 0:
             move_dir = direction.normalize() * move_speed
+            if move_dir.length() > distance:
+                move_dir.scale_to_length(distance)
             self.position += move_dir
             self.last_point = Vector2(self.position)
         # Tourist pickup at entrance
@@ -102,6 +104,10 @@ class Jeep:
                         if tourist.enter_jeep(self):
                             self.board.waiting_tourists.remove(tourist)
 
+
+        if distance < 0.05 and not self.is_reversing:
+            self.position = Vector2(next_point)  # snap exactly to target
+            self._path_index += 1
 
         # Check if reached waypoint
         if distance < 0.1 and not self.is_reversing:
