@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import pygame
+from my_safari_project.model.field import TerrainType
 from pygame import Surface, Rect
 from pygame.math import Vector2
 from typing import Tuple
@@ -190,19 +191,16 @@ class BoardGUI:
         if self.board.width == 0 or self.board.height == 0:
             return
 
-        # self.tile = max(4, min(self.tile, rect.width // 4, rect.height // 4))
         side = self.tile
-
-        # keep tile size in sane bounds
         self.tile = max(self.MIN_TILE, min(self.tile, self.MAX_TILE))
 
         half_w = rect.width // (2 * side)
         half_h = rect.height // (2 * side)
 
-        min_x = int(self.cam.x) - half_w - 1
-        min_y = int(self.cam.y) - half_h - 1
-        max_x = int(self.cam.x) + half_w + 2
-        max_y = int(self.cam.y) + half_h + 2
+        min_x = int(self.cam.x - half_w - 1)
+        min_y = int(self.cam.y - half_h - 1)
+        max_x = int(self.cam.x + half_w + 2)
+        max_y = int(self.cam.y + half_h + 2)
 
         ox = rect.centerx - int((self.cam.x - min_x) * side)
         oy = rect.centery - int((self.cam.y - min_y) * side)
@@ -220,7 +218,7 @@ class BoardGUI:
             visible_map = lambda x, y: (x - world_x) ** 2 + (y - world_y) ** 2 <= radius ** 2
 
         # Background
-        bg = pygame.transform.scale(self.desert, (vis_w * side, vis_h * side))
+        bg = pygame.transform.scale(self.desert, ((max_x - min_x) * side, (max_y - min_y) * side))
         screen.blit(bg, (ox, oy))
 
         # Entrances
@@ -228,17 +226,16 @@ class BoardGUI:
             if min_x <= e.x < max_x and min_y <= e.y < max_y:
                 px = ox + int((e.x - min_x) * side)
                 py = oy + int((e.y - min_y) * side)
-                screen.blit(pygame.transform.scale(self.entrance, (side*4, side*4)), (px, py))
+                screen.blit(pygame.transform.scale(self.entrance, (side * 4, side * 4)), (px, py))
 
         # Exits
         for e in self.board.exits[:4]:
             if min_x <= e.x < max_x and min_y <= e.y < max_y:
                 px = ox + int((e.x - min_x) * side)
                 py = oy + int((e.y - min_y) * side)
-                screen.blit(pygame.transform.scale(self.exit, (side*4, side*4)), (px, py))
+                screen.blit(pygame.transform.scale(self.exit, (side * 4, side * 4)), (px, py))
 
-
-        # Roads
+            # Roads
         road_col = (105, 105, 105)
         for rd in self.board.roads:
             if min_x <= rd.pos.x < max_x and min_y <= rd.pos.y < max_y:
@@ -289,14 +286,12 @@ class BoardGUI:
         # Jeeps
         jw = jh = side * 2
         for j in self.board.jeeps:
-            cx, cy = j.position
-            if (min_x - 2) <= cx < (max_x + 2) and (min_y - 2) <= cy < (max_y + 2):
-                img = pygame.transform.scale(self.jeep, (jw, jh))
-                img = pygame.transform.rotate(img, -j.heading)
-                r = img.get_rect(center=(0, 0))
-                px = ox + int((cx - min_x) * side - r.width / 2)
-                py = oy + int((cy - min_y) * side - r.height / 2)
-                screen.blit(img, (px, py))
+            if min_x <= j.position.x < max_x and min_y <= j.position.y < max_y:
+                px = ox + int((j.position.x - min_x) * side - jw / 4)
+                py = oy + int((j.position.y - min_y) * side - jh / 4)
+                scaled_jeep = pygame.transform.scale(self.jeep, (jw, jh))
+                rotated_jeep = pygame.transform.rotate(scaled_jeep, -j.heading)
+                screen.blit(rotated_jeep, (px, py))
 
         # Rangers
         for r in self.board.rangers:
@@ -333,6 +328,21 @@ class BoardGUI:
                 radius = max(3, int(side * 0.2))  # tourist dot size
                 pygame.draw.circle(screen, (255, 215, 0), (px + side // 2, py + side // 2), radius)
 
+        # Draw terrain
+        for y in range(min_y, max_y):
+            for x in range(min_x, max_x):
+                if 0 <= x < self.board.width and 0 <= y < self.board.height:
+                    field = self.board.fields[y][x]
+                    px = ox + int((x - min_x) * side)
+                    py = oy + int((y - min_y) * side)
+
+                    terrain_value = (field.terrain_type.value
+                                     if hasattr(field.terrain_type, 'value')
+                                     else field.terrain_type)
+
+                    # Draw terrain based on type
+                    if terrain_value != TerrainType.GRASS.value:
+                        pygame.draw.rect(screen, field.color_map[terrain_value], (px, py, side, side))
 
         # Grid
         grid_col = (80, 80, 80)
