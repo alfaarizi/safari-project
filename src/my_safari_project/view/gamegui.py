@@ -212,10 +212,15 @@ class GameGUI:
 
         for ev in pygame.event.get():
 
-            if ev.type == pygame.KEYDOWN and ev.key == pygame.K_d:
+            if ev.type == pygame.QUIT:
+                self.control.pause_game()
+                pygame.quit()
+                sys.exit()
+
+            elif ev.type == pygame.KEYDOWN and ev.key == pygame.K_d:
                 self.control.wildlife_ai.animal_ai.debug_mode = not self.control.wildlife_ai.animal_ai.debug_mode
                 debug_status = "ON" if self.control.wildlife_ai.animal_ai.debug_mode else "OFF"
-                self._feedback(f"Debug mode: {debug_status}")
+                self._feedback(f"Insider mode: {debug_status}")
 
             # -----------------------------------------------------------------
             #  LEFT-CLICK  (button 1)

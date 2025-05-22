@@ -93,6 +93,8 @@ class Board:
             # Lay road segments
             for a, b in zip(pts, pts[1:]):
                 self._lay_segment(a, b)
+        
+        self._update_road_types()
 
     def _lay_segment(self, a: Vector2, b: Vector2):
         x, y = int(a.x), int(a.y)
@@ -129,6 +131,17 @@ class Board:
         fld.set_terrain(TerrainType.ROAD)  # Use set_terrain to ensure proper setup
         fld.is_obstacle = False
         fld.walkable = True
+    
+    def _determine_road_type(self, pos: Vector2):
+        x, y = int(pos.x), int(pos.y)
+        h_neighbors = sum(1 for dx in [-1,1] if any(r.pos == Vector2(x+dx, y) for r in self.roads))
+        v_neighbors = sum(1 for dy in [-1,1] if any(r.pos == Vector2(x, y+dy) for r in self.roads))
+        return RoadType.STRAIGHT_H if h_neighbors >= v_neighbors else RoadType.STRAIGHT_V
+
+    def _update_road_types(self):
+        from my_safari_project.model.road import RoadType
+        for road in self.roads:
+            road.type = self._determine_road_type(road.pos)
 
     def add_road(self, x: int, y: int, road_type: str) -> bool:
         """Add a road from the shop at the specified position."""
