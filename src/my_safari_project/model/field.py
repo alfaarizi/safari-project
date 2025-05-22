@@ -1,22 +1,23 @@
 from enum import Enum
 
 import pygame
+from pygame import math, time
 from pygame.math import Vector2
 from typing import List, Any
 
 class TerrainType(Enum):
     GRASS = "GRASS"
-    ROAD = "ROAD"
+    DENSE_GRASS = "DENSE_GRASS"
     HILL = "HILL"
     RIVER = "RIVER"
-    DENSE_GRASS = "DENSE_GRASS"
+    ROAD = "ROAD"
 
 class Field:
     def __init__(
             self,
             position: Vector2,
             field_id: int = 0,
-            terrain_type: str = "GRASS",
+            terrain_type: str | TerrainType = "GRASS",
             elevation: int = 0,
             is_obstacle: bool = False,
             water_level: float = 0.0
@@ -25,20 +26,26 @@ class Field:
         self.position = position
         self.x = int(position.x)
         self.y = int(position.y)
-        self.terrain_type = TerrainType.GRASS
         self.elevation = elevation
         self.is_obstacle = is_obstacle
         self.water_level = water_level
         self.objects_on_field: List[Any] = []
-        self.walkable = not is_obstacle and self.terrain_type != "WATER"
+        self.walkable = not is_obstacle
         self.movement_cost: float = 1.0
+
         self.color_map = {
-            "GRASS": (124, 252, 0),  # Light green for base grass
-            "HILL": (139, 69, 19),  # Brown for hills
-            "RIVER": (28, 107, 160),  # Blue for rivers
-            "ROAD": (128, 128, 128),  # Gray for roads
-            "DENSE_GRASS": (0, 100, 0)  # Dark green for dense grass
+            TerrainType.GRASS: (124, 252, 0),
+            TerrainType.DENSE_GRASS: (34, 139, 34),
+            TerrainType.HILL: (160, 126, 84),
+            TerrainType.RIVER: (65, 105, 225),
+            TerrainType.ROAD: (169, 169, 169)
         }
+
+        self.terrain_type = (
+            TerrainType(terrain_type.upper())
+            if isinstance(terrain_type, str)
+            else terrain_type
+        )
 
     def add_object(self, obj: Any) -> None:
         self.objects_on_field.append(obj)
@@ -89,20 +96,28 @@ class Field:
             tile_size,
             tile_size
         )
-        base_color = self.color_map.get(self.terrain_type, (0, 0, 0))
-        pygame.draw.rect(surface, base_color, rect)
-        if self.terrain_type == "WATER" and self.water_level > 0:
-            overlay = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
-            overlay.fill((28, 107, 160, int(255 * min(self.water_level, 1.0))))
-            surface.blit(overlay, rect.topleft)
-        if self.is_occupied():
-            font = pygame.font.SysFont(None, 20)
-            text_surface = font.render(str(len(self.objects_on_field)), True, (255, 255, 255))
-            surface.blit(text_surface, rect.topleft)
+        base_color = self.color_map[self.terrain_type]
 
-    def set_terrain_type(self, terrain_type: str) -> None:
-        self.terrain_type = terrain_type.upper()
-        self.walkable = not self.is_obstacle and self.terrain_type != "WATER"
+        pygame.draw.rect(surface, base_color, rect)
+
+        # Add elevation shading for hills
+        if self.terrain_type == TerrainType.HILL:
+            shade = max(0, min(100, self.elevation * 30))
+            overlay = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+            overlay.fill((0, 0, 0, shade))  # Darker with height
+            surface.blit(overlay, rect.topleft)
+
+        # Add water effect for rivers
+        elif self.terrain_type == TerrainType.RIVER:
+            wave_height = abs(math.sin(time.time() * 2)) * 20
+            overlay = pygame.Surface((tile_size, tile_size), pygame.SRCALPHA)
+            overlay.fill((255, 255, 255, int(wave_height)))  # Shimmering effect
+            surface.blit(overlay, rect.topleft)
+
+    def get_color(self, terrain_value: str | TerrainType) -> tuple:
+        if isinstance(terrain_value, str):
+            terrain_value = TerrainType(terrain_value.upper())
+        return self.color_map[terrain_value]
 
     def set_elevation(self, elevation: float) -> None:
         self.elevation = elevation

@@ -326,35 +326,94 @@ class Board:
         return True                     # empty grass
 
     def _generate_terrain(self):
-        # Create hills
-        for _ in range(int(self.width * self.height * 0.05)):  # 5% hills
+        # Generate hills in clusters
+        for _ in range(int(self.width * self.height * 0.05)):
             x = random.randint(0, self.width - 1)
             y = random.randint(0, self.height - 1)
-            field = self.fields[y][x]
-            if field.terrain_type == TerrainType.GRASS:
-                field.set_terrain(TerrainType.HILL)
-                field.elevation = random.randint(1, 3)  # Integer elevation values
+            if self.fields[y][x].terrain_type == TerrainType.GRASS:
+                self._create_hill_cluster(x, y, random.randint(1, 3))
 
-                # Create hill cluster with integer coordinates
-                for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                    nx, ny = x + dx, y + dy
-                    if (0 <= nx < self.width and 0 <= ny < self.height and
-                            random.random() < 0.6):  # 60% chance for each neighbor
-                        neighbor = self.fields[ny][nx]
-                        if neighbor.terrain_type == TerrainType.GRASS:
-                            neighbor.set_terrain(TerrainType.HILL)
-                            neighbor.elevation = max(1, field.elevation - 1)  # Decrease elevation
+        # Generate winding rivers
+        for _ in range(2):
+            self._create_river()
 
-        # Create rivers with integer coordinates
-        for _ in range(2):  # 2 rivers
-            x = random.randint(0, self.width - 1)  # Start at top edge
-            y = 0
-            while y < self.height:
-                field = self.fields[y][x]
-                if field.terrain_type == TerrainType.GRASS:
-                    field.set_terrain(TerrainType.RIVER)
-                    field.elevation = 0  # Rivers at ground level
+        # Add dense grass patches
+        for _ in range(int(self.width * self.height * 0.1)):
+            x = random.randint(0, self.width - 1)
+            y = random.randint(0, self.height - 1)
+            if self.fields[y][x].terrain_type == TerrainType.GRASS:
+                self.fields[y][x].set_terrain(TerrainType.DENSE_GRASS)
 
-                # Meander river with integer coordinates
-                x = max(0, min(self.width - 1, x + random.choice([-1, 0, 1])))
-                y += 1
+    def _create_hill_cluster(self, x: int, y: int, height: int):
+        if not (0 <= x < self.width and 0 <= y < self.height):
+            return
+
+        field = self.fields[y][x]
+        if field.terrain_type != TerrainType.GRASS:
+            return
+
+        field.set_terrain(TerrainType.HILL)
+        field.elevation = height
+
+        if height > 1:
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                if random.random() < 0.6:
+                    self._create_hill_cluster(x + dx, y + dy, height - 1)
+
+    def _create_river(self):
+        """Create a winding river across the map"""
+        # Start from a random edge
+        edge = random.choice(['top', 'bottom', 'left', 'right'])
+        match edge:
+            case 'top':
+                start_x = random.randint(0, self.width - 1)
+                start_y = 0
+                direction = Vector2(0, 1)
+            case 'bottom':
+                start_x = random.randint(0, self.width - 1)
+                start_y = self.height - 1
+                direction = Vector2(0, -1)
+            case 'left':
+                start_x = 0
+                start_y = random.randint(0, self.height - 1)
+                direction = Vector2(1, 0)
+            case 'right':
+                start_x = self.width - 1
+                start_y = random.randint(0, self.height - 1)
+                direction = Vector2(-1, 0)
+
+        current = Vector2(start_x, start_y)
+        river_tiles = []
+
+        while (0 <= current.x < self.width and
+               0 <= current.y < self.height):
+            x, y = int(current.x), int(current.y)
+
+            # Add current tile to river
+            if self.fields[y][x].terrain_type != TerrainType.ROAD:
+                self.fields[y][x].set_terrain(TerrainType.RIVER)
+                river_tiles.append((x, y))
+
+            # Random direction change
+            if random.random() < 0.2:
+                # Change direction slightly
+                if direction.x != 0:  # Moving horizontally
+                    direction.y = random.choice([-0.5, 0, 0.5])
+                else:  # Moving vertically
+                    direction.x = random.choice([-0.5, 0, 0.5])
+
+                # Normalize direction
+                if direction.length() > 0:
+                    direction = direction.normalize()
+
+            # Move to next position
+            current += direction
+
+        # Add water effect to neighbors
+        for x, y in river_tiles:
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nx, ny = x + dx, y + dy
+                if (0 <= nx < self.width and
+                        0 <= ny < self.height and
+                        self.fields[ny][nx].terrain_type == TerrainType.GRASS):
+                    self.fields[ny][nx].set_terrain(TerrainType.DENSE_GRASS)
