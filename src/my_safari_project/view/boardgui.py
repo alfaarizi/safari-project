@@ -192,7 +192,6 @@ class BoardGUI:
             return
 
 
-        print(f"Waiting tourists: {len(self.board.waiting_tourists)}")
 
         side = self.tile
         self.tile = max(self.MIN_TILE, min(self.tile, self.MAX_TILE))
