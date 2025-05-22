@@ -619,7 +619,7 @@ class GameGUI:
         pygame.draw.rect(self.screen, (60,70,90), (0,0,SCREEN_W,TOP_BAR_H))
 
         x = margin
-        for txt in [f"Tourists: {len(self.control.board.tourists)}",
+        for txt in [f"Tourists: {len(self.control.board.tourists) + len(self.control.board.waiting_tourists)}",
                     f"Animals: {len(self.control.board.animals)}"]:
             x += box(txt, x) + margin
         box(f"Capital: ${self.control.capital.getBalance():.0f}", margin,

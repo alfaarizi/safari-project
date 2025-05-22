@@ -191,6 +191,9 @@ class BoardGUI:
         if self.board.width == 0 or self.board.height == 0:
             return
 
+
+        print(f"Waiting tourists: {len(self.board.waiting_tourists)}")
+
         side = self.tile
         self.tile = max(self.MIN_TILE, min(self.tile, self.MAX_TILE))
 
@@ -341,15 +344,16 @@ class BoardGUI:
         tourist_size = int(side * 1.5)
         radius = max(3, int(side * 0.2))
         for t in self.board.tourists + self.board.waiting_tourists:
-            if hasattr(t, 'in_jeep') and t.in_jeep is not None: continue
-            tx, ty = t.position
-            if min_x <= tx < max_x and min_y <= ty < max_y:
+            if hasattr(t, 'in_jeep') and t.in_jeep is not None:
+                continue
+
+            tx, ty = t.position.x, t.position.y
+
+            # Include slight buffer to allow for tourist offset near edges
+            if (min_x - 1) <= tx < (max_x + 1) and (min_y - 1) <= ty < (max_y + 1):
                 px = ox + int((tx - min_x) * side)
                 py = oy + int((ty - min_y) * side)
-                if t in self.board.waiting_tourists:
-                    pygame.draw.circle(screen, (255, 215, 0), (px + side // 2, py + side // 2), radius)
-                else:
-                    screen.blit(pygame.transform.scale(self.tourist, (tourist_size, tourist_size)), (px, py))
+                screen.blit(pygame.transform.scale(self.tourist, (tourist_size, tourist_size)), (px, py))
 
         # LAYER 8: Hover highlight
         if hover_tile is not None:
