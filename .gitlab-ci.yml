@@ -6,6 +6,8 @@ test_job:
   stage: test
   image: python:3.10
   before_script:
+    - export SDL_AUDIODRIVER=dummy
+    - export SDL_VIDEODRIVER=dummy 
     - pip install poetry
     - poetry install
   script:
