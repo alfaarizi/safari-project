@@ -85,7 +85,7 @@ class GameGUI:
             {"name": "Zebra", "cost": ZEBRA_COST},
             {"name": "Jeep", "cost": 50, "type": "jeep"},
             {"name": "Straight H Road", "cost": 10, "type": "h_road"},
-            {"name": "Straight V Road", "cost": 10, "type": "v_road"}
+            {"name": "Straight V Road", "cost": 10, "type": "v_road"},
         ]
         self.item_rects: list[pygame.Rect] = []
 
@@ -619,7 +619,7 @@ class GameGUI:
         
         # Left-aligned boxes
         x = start_margin
-        for txt in [f"Tourists: {len(self.control.board.tourists)}",
+        for txt in [f"Tourists: {len(self.control.board.tourists) + len(self.control.board.waiting_tourists)}",
                     f"Rangers: {len(self.control.board.rangers)}",
                     f"Poachers: {len(self.control.board.poachers)}"]:
             x += self._draw_box(txt, x, y, radius=8) + margin
@@ -664,44 +664,38 @@ class GameGUI:
     # ---------------- side panel -------------------------------------------
     def _draw_side_panel(self):
         px, py = SCREEN_W - SIDE_PANEL_W, TOP_BAR_H
-        pygame.draw.rect(self.screen, (70,80,100),
-                         (px, py, SIDE_PANEL_W, SCREEN_H - py))
-        title = self.font_medium.render("Shop", True, (255,255,255))
-        self.screen.blit(title, (px + 20, py + 10))
+        pygame.draw.rect(self.screen, (70,80,100), (px, py, SIDE_PANEL_W, SCREEN_H - py))
+        self.screen.blit(self.font_medium.render("Shop", True, (255,255,255)), (px + 20, py + 10))
 
-        self.item_rects.clear()
-        top  = py + 50    # top of list
-        bottom = SCREEN_H - BOTTOM_BAR_H - 32  #  speed buttons row - gap_above_buttons
-
-        scroll_limit  = max(0, (len(self.shop_items)*44) - (bottom-top))
-
-        # clamp scroll offset
+        # Setup and clipping
+        top, visible_h = py + 50, SCREEN_H - BOTTOM_BAR_H - 100
+        scroll_limit = max(0, len(self.shop_items) * 44 - visible_h)
         self.shop_scroll = max(-scroll_limit, min(0, self.shop_scroll))
-        y = top + self.shop_scroll
+        
+        self.screen.set_clip((px, top, SIDE_PANEL_W, visible_h))
 
+        # Draw items
+        self.item_rects.clear()
+        y = top + self.shop_scroll
         for i, item in enumerate(self.shop_items):
             rect = pygame.Rect(px + 20, y, SIDE_PANEL_W - 40, 36)
             self.item_rects.append(rect)
             
-            if top <= rect.bottom <= bottom: # only draw visible ones
-                colour = (80,110,160) if i == self.hover_item else (90,100,120)
-                pygame.draw.rect(self.screen, colour, rect, border_radius=4)
-                txt = self.font_small.render(f"{item['name']}: ${item['cost']}",
-                                             True, (255,255,255))
-                self.screen.blit(txt, (rect.x + 8, rect.y + 6))
+            color = (80,110,160) if i == self.hover_item else (90,100,120)
+            pygame.draw.rect(self.screen, color, rect, border_radius=4)
+            self.screen.blit(self.font_small.render(f"{item['name']}: ${item['cost']}", True, (255,255,255)), (rect.x + 8, rect.y + 6))
             y += 44
 
-             # scrollbar
-            if scroll_limit > 0:
-                frac  = (bottom - top)/(bottom - top + scroll_limit)
-                bar_h = max(20, int((bottom-top) * frac))   #never smaller than 20 px
-                bar_y = top - self.shop_scroll * (bottom-top-bar_h) / scroll_limit
-                rail_x = px + SIDE_PANEL_W - 16  # inside the panel, not at screen edge
-                sb_rect = pygame.Rect(rail_x, int(bar_y), 8, int(bar_h))
-                pygame.draw.rect(self.screen, (40,40,50), (rail_x, top, 8, bottom-top))
-                pygame.draw.rect(self.screen, (140,140,160), sb_rect, border_radius=3)
+        self.screen.set_clip(None)
 
-        # speed / pause buttons
+        # Scrollbar
+        if scroll_limit:
+            rail_x = px + SIDE_PANEL_W - 16
+            pygame.draw.rect(self.screen, (40,40,50), (rail_x, top, 8, visible_h))
+            thumb_h = max(20, visible_h * visible_h // (len(self.shop_items) * 44))
+            thumb_y = top + abs(self.shop_scroll) * (visible_h - thumb_h) // scroll_limit
+            pygame.draw.rect(self.screen, (140,140,160), (rail_x, thumb_y, 8, thumb_h), border_radius=3)
+
         self._draw_speed_buttons()
 
     # ---------------- feedback --------------------------------------------
