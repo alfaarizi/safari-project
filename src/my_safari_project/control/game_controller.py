@@ -482,15 +482,7 @@ class GameController:
         # Clear existing
         self.board.plants.clear()
         self.board.ponds.clear()
-        # 1. Load all roads
-        self.board.roads.clear()
-        for rd in data["roads"]:
-            pos = Vector2(rd["x"], rd["y"])
-            road = Road(pos, RoadType[rd["type"]])
-            self.board.roads.append(road)
-            fx, fy = int(pos.x), int(pos.y)
-            self.board.fields[fy][fx].terrain_type = "ROAD"
-            self.board.fields[fy][fx].set_obstacle(True)
+  
 
         # 2. STITCH ROAD NETWORK properly
         for road in self.board.roads:
