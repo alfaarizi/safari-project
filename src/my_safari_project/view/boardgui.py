@@ -8,7 +8,7 @@ from pygame.math import Vector2
 from typing import Tuple
 from pygame import Rect
 from my_safari_project.model.board import Board
-from my_safari_project.model.road  import Road
+from my_safari_project.model.road  import Road, RoadType
 from my_safari_project.model.animal import Animal
 from my_safari_project.model.timer import TIME_SCALE
 
@@ -67,7 +67,7 @@ class BoardGUI:
 
     def _load_assets(self):
         root = os.path.join(os.path.dirname(__file__), "images")
-        self.desert  = self._load_img(root, "desert",  alpha=False)
+        self.desert  = self._load_img(root, "ground",  alpha=False)
         self.plant   = self._load_img(root, "plant")
         self.pond    = self._load_img(root, "pond")
         self.jeep    = self._load_img(root, "jeep")
@@ -217,45 +217,71 @@ class BoardGUI:
             world_y = self.cam.y + (my - rect.centery) / side
             visible_map = lambda x, y: (x - world_x) ** 2 + (y - world_y) ** 2 <= radius ** 2
 
-        # Background
+        # LAYER 1: Background
         bg = pygame.transform.scale(self.desert, ((max_x - min_x) * side, (max_y - min_y) * side))
         screen.blit(bg, (ox, oy))
 
-        # Entrances
-        for e in self.board.entrances[:4]:
-            if min_x <= e.x < max_x and min_y <= e.y < max_y:
-                px = ox + int((e.x - min_x) * side)
-                py = oy + int((e.y - min_y) * side)
-                screen.blit(pygame.transform.scale(self.entrance, (side * 4, side * 4)), (px, py))
+        # LAYER 2: Terrain
+        for y in range(min_y, max_y):
+            for x in range(min_x, max_x):
+                if 0 <= x < self.board.width and 0 <= y < self.board.height:
+                    field = self.board.fields[y][x]
+                    px = ox + int((x - min_x) * side)
+                    py = oy + int((y - min_y) * side)
 
-        # Exits
-        for e in self.board.exits[:4]:
-            if min_x <= e.x < max_x and min_y <= e.y < max_y:
-                px = ox + int((e.x - min_x) * side)
-                py = oy + int((e.y - min_y) * side)
-                screen.blit(pygame.transform.scale(self.exit, (side * 4, side * 4)), (px, py))
+                    terrain_value = (field.terrain_type.value
+                                     if hasattr(field.terrain_type, 'value')
+                                     else field.terrain_type)
 
-            # Roads
-        road_col = (105, 105, 105)
+                    # Draw terrain based on type
+                    if terrain_value != TerrainType.GRASS.value:
+                        pygame.draw.rect(screen, field.get_color(terrain_value), (px, py, side, side))
+
+        # Roads
+        def draw_single_road(rd):
+            px, py = int(ox + (rd.pos.x - min_x) * side), int(oy + (rd.pos.y - min_y) * side)
+            margin = int(side // 2.5)
+            yellow, lw = (200, 200, 0), max(1, int(side // 30))  # Darker yellow
+            pygame.draw.rect(screen, (0, 0, 0), (px, py, int(side), int(side))) # Black road surface
+            match rd.type:
+                case RoadType.STRAIGHT_H:
+                    pygame.draw.line(screen, yellow, (px + margin, py + int(side)//2), (px + int(side) - margin, py + int(side)//2), lw)
+                case RoadType.STRAIGHT_V:
+                    pygame.draw.line(screen, yellow, (px + int(side)//2, py + margin), (px + int(side)//2, py + int(side) - margin), lw)
         for rd in self.board.roads:
             if min_x <= rd.pos.x < max_x and min_y <= rd.pos.y < max_y:
-                px = ox + int((rd.pos.x - min_x) * side)
-                py = oy + int((rd.pos.y - min_y) * side)
-                pygame.draw.rect(screen, road_col, (px, py, side, side))
+                draw_single_road(rd)
 
-        # Animal debug overlays
-        if getattr(self.board.wildlife_ai.animal_ai, "debug_mode"):
-            self.board.wildlife_ai.animal_ai.render(screen, ox, oy, side, min_x, min_y)
+        # LAYER 4: Entrances and Exits
+        for doors, is_entrance in [(self.board.entrances, True), (self.board.exits, False)]:
+            for e in doors[:4]:
+                if min_x <= e.x < max_x and min_y <= e.y < max_y:
+                    road = next((r for r in self.board.roads if r.pos == e), None)
+                    if road:
+                        match road.type:
+                            case RoadType.STRAIGHT_H:
+                                door_x, door_y = (e.x + 2, e.y) if any(r.pos == Vector2(e.x - 1, e.y) for r in self.board.roads) else (e.x - 2, e.y)
+                            case RoadType.STRAIGHT_V:
+                                door_x, door_y = (e.x, e.y - 2) if any(r.pos == Vector2(e.x, e.y + 1) for r in self.board.roads) else (e.x, e.y + 2)
+                    else:
+                        door_x, door_y = e.x, e.y
+                    
+                    if min_x <= door_x < max_x and min_y <= door_y < max_y:
+                        door_size = int(side * 1.5)
+                        px = ox + int((door_x - min_x) * side) - (door_size - side) // 2
+                        py = oy + int((door_y - min_y) * side) - (door_size - side)  # Bottom-aligned
+                        img = self.entrance if is_entrance else self.exit
+                        screen.blit(pygame.transform.scale(img, (door_size, door_size)), (px, py))
 
-        # Ponds (always visible)
+        # LAYER 5: Static entities (Ponds and Plants)
+        # Ponds
         for p in self.board.ponds:
             x, y = p.position
             if min_x <= x < max_x and min_y <= y < max_y:
                 px = ox + int((x - min_x) * side)
                 py = oy + int((y - min_y) * side)
                 screen.blit(pygame.transform.scale(self.pond, (side, side)), (px, py))
-
-        # Plants (always visible)
+        # Plants
         gw, gh = side, int(side * 1.2)
         for p in self.board.plants:
             x, y = p.position
@@ -266,8 +292,13 @@ class BoardGUI:
                     pygame.transform.scale(self.plant, (gw, gh)),
                     (px, py)
                 )
-        
-        # ---------- animals -----------------------------
+
+        # LAYER 6: Animal debug overlays (if enabled)
+        if getattr(self.board.wildlife_ai.animal_ai, "debug_mode"):
+            self.board.wildlife_ai.animal_ai.render(screen, ox, oy, side, min_x, min_y)
+
+        # LAYER 7: Moving entities (Animals, Jeeps, Rangers, etc.)
+        # Animals
         aw, ah = side, side
         for animal in self.board.animals:
             loc = getattr(animal, "position", Vector2(0, 0))
@@ -282,25 +313,17 @@ class BoardGUI:
             px = ox + int((loc.x - min_x) * side)
             py = oy + int((loc.y - min_y) * side)
             screen.blit(pygame.transform.scale(self.animals[animal.species.value], (aw, ah)), (px, py))
-
         # Jeeps
-        jw = jh = side * 2  # Keep jeep size at 2x tile size
+        jw = jh = side * 2
         for j in self.board.jeeps:
-            if min_x <= j.position.x < max_x and min_y <= j.position.y < max_y:
-                # Center the jeep on the tile
-                px = ox + int((j.position.x - min_x) * side - jw / 4)
-                py = oy + int((j.position.y - min_y) * side - jh / 4)
-
-                # Scale and rotate from center
-                scaled_jeep = pygame.transform.scale(self.jeep, (jw, jh))
-                # Get rotation center
-                rot_center = scaled_jeep.get_rect(center=(jw / 2, jh / 2))
-                # Rotate around center
-                rotated_jeep = pygame.transform.rotate(scaled_jeep, -j.heading)
-                # Adjust position to maintain center
-                rot_rect = rotated_jeep.get_rect(center=rot_center.center)
-                screen.blit(rotated_jeep, (px + rot_rect.x, py + rot_rect.y))
-
+            cx, cy = j.position
+            if (min_x - 2) <= cx < (max_x + 2) and (min_y - 2) <= cy < (max_y + 2):
+                img = pygame.transform.scale(self.jeep, (jw, jh))
+                img = pygame.transform.rotate(img, -j.heading)
+                r = img.get_rect(center=(0, 0))
+                px = ox + int((cx - min_x) * side - r.width / 2)
+                py = oy + int((cy - min_y) * side - r.height / 2)
+                screen.blit(img, (px, py))
         # Rangers
         for r in self.board.rangers:
             rx, ry = r.position
@@ -308,60 +331,26 @@ class BoardGUI:
                 px = ox + int((rx - min_x) * side)
                 py = oy + int((ry - min_y) * side)
                 screen.blit(pygame.transform.scale(self.ranger, (side, side)), (px, py))
-
-        # Poachers (only if visible to a ranger)
-        for p in self.board.poachers:
-            if p.visible:
-                px = ox + int((p.position.x - min_x) * side)
-                py = oy + int((p.position.y - min_y) * side)
-                screen.blit(pygame.transform.scale(self.poacher, (side, side)), (px, py))
-
+        # Poachers
+        for p in self.board.poachers:        
+            px = ox + int((p.position.x - min_x) * side)
+            py = oy + int((p.position.y - min_y) * side)
+            screen.blit(pygame.transform.scale(self.poacher, (side, side)), (px, py))
         # Tourists (only if not inside a jeep)
-        for t in self.board.tourists:
-            if t.in_jeep is not None:
-                continue
+        tourist_size = int(side * 1.5)
+        radius = max(3, int(side * 0.2))
+        for t in self.board.tourists + self.board.waiting_tourists:
+            if hasattr(t, 'in_jeep') and t.in_jeep is not None: continue
             tx, ty = t.position
             if min_x <= tx < max_x and min_y <= ty < max_y:
                 px = ox + int((tx - min_x) * side)
                 py = oy + int((ty - min_y) * side)
-                screen.blit(pygame.transform.scale(self.tourist, (side*2, side*2)), (px, py))
+                if t in self.board.waiting_tourists:
+                    pygame.draw.circle(screen, (255, 215, 0), (px + side // 2, py + side // 2), radius)
+                else:
+                    screen.blit(pygame.transform.scale(self.tourist, (tourist_size, tourist_size)), (px, py))
 
-
-        # Waiting Tourists at Entrances
-        for tourist in self.board.waiting_tourists:
-            loc = tourist.position
-            if min_x <= loc.x < max_x and min_y <= loc.y < max_y:
-                px = ox + int((loc.x - min_x) * side)
-                py = oy + int((loc.y - min_y) * side)
-                radius = max(3, int(side * 0.2))  # tourist dot size
-                pygame.draw.circle(screen, (255, 215, 0), (px + side // 2, py + side // 2), radius)
-
-        # Draw terrain
-        for y in range(min_y, max_y):
-            for x in range(min_x, max_x):
-                if 0 <= x < self.board.width and 0 <= y < self.board.height:
-                    field = self.board.fields[y][x]
-                    px = ox + int((x - min_x) * side)
-                    py = oy + int((y - min_y) * side)
-
-                    terrain_value = (field.terrain_type.value
-                                     if hasattr(field.terrain_type, 'value')
-                                     else field.terrain_type)
-
-                    # Draw terrain based on type
-                    if terrain_value != TerrainType.GRASS.value:
-                        pygame.draw.rect(screen, field.color_map[terrain_value], (px, py, side, side))
-
-        # Grid
-        grid_col = (80, 80, 80)
-        for c in range(vis_w + 1):
-            x = ox + c * side
-            pygame.draw.line(screen, grid_col, (x, oy), (x, oy + vis_h * side), 1)
-        for r in range(vis_h + 1):
-            y = oy + r * side
-            pygame.draw.line(screen, grid_col, (ox, y), (ox + vis_w * side, y), 1)
-
-        # ---------- hover highlight  -------------------------------
+        # LAYER 8: Hover highlight
         if hover_tile is not None:
             tx, ty = int(hover_tile.x), int(hover_tile.y) # informs the renderer which board square the mouse is over
             # only draw if in our vis window:
@@ -374,7 +363,7 @@ class BoardGUI:
                 overlay.fill(color)
                 screen.blit(overlay, (px, py))
 
-        # ---------- day / night overlay ----------------------------
+        # LAYER 10: Day/night overlay
         if self.dn_opacity > 0:
             smoothed = self._smoothstep(self.dn_opacity)
             tint = self._lerp((255, 255, 255, 0), (0, 0, 70, 160), smoothed)

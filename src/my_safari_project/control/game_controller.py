@@ -102,7 +102,7 @@ class GameController:
         self.won = self.lost = False
 
         # ─── MODEL ────────────────────────────────────────────────
-        self.board: Board = Board(45, 40, n_roads=5, n_jeeps=10)
+        self.board: Board = Board(100, 100, n_roads=5, n_jeeps=10)
         self.capital: Capital = Capital(init_balance)
         self.timer: Timer = Timer()
         self.running = True
@@ -267,7 +267,6 @@ class GameController:
     def resume_game(self):
         if getattr(self, "game_state", None) == GameState.PAUSED:
             self.game_state = GameState.RUNNING
-
 
     def _monthly_update(self):
         # pay salaries, update budget, wildlife monthly
