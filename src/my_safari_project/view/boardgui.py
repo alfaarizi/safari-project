@@ -237,7 +237,7 @@ class BoardGUI:
 
                     # Draw terrain based on type
                     if terrain_value != TerrainType.GRASS.value:
-                        pygame.draw.rect(screen, field.color_map[terrain_value], (px, py, side, side))
+                        pygame.draw.rect(screen, field.get_color(terrain_value), (px, py, side, side))
 
         # Roads
         def draw_single_road(rd):
