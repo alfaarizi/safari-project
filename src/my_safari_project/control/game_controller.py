@@ -122,6 +122,7 @@ class GameController:
         self.visible_animals_night = set()
         self.board.visible_animals_night = self.visible_animals_night
         self.chip_placement_mode = False
+        self.last_month_check = 0
 
 
     def run(self):
@@ -148,6 +149,12 @@ class GameController:
     # ───────────────────────── Simulation Update ──────────────────────────
     def _update_sim(self, dt: float):
         now = self.timer.elapsed_seconds
+
+        # Check monthly win conditions
+        current_month = int(now / TIME_SCALE["month"])
+        if current_month > self.last_month_check:
+            self.last_month_check = current_month
+            self._check_win_conditions()
 
         # 1) advance jeeps (and their yield logic) + Wildlife AI
         self.board.update(dt, now)
@@ -303,6 +310,22 @@ class GameController:
 
     def calculate_visitor_flow(self):
         pass
+
+    def _check_win_conditions(self):
+        """Check monthly win conditions"""
+        visitors = len(self.board.tourists) + len(self.board.waiting_tourists)
+        herbivores = len([a for a in self.board.animals if a.__class__.__name__ == "Herbivore" and a.is_alive])
+        carnivores = len([a for a in self.board.animals if a.__class__.__name__ == "Carnivore" and a.is_alive])
+        capital = self.capital.getBalance()
+        if (visitors >= self.visits_req and herbivores >= self.herb_req and 
+            carnivores >= self.carn_req and capital >= self.cap_req):
+            self.consec_success += 1
+            if self.consec_success >= self.months_needed:
+                self.won = True
+                self.game_gui._feedback(f"VICTORY! Completed {self.months_needed} consecutive months!")
+                self.pause_game()
+        else:
+            self.consec_success = 0
 
     def add_funds(self, amount: float):
         self.capital.addFunds(amount)
