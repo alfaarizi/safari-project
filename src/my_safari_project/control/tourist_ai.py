@@ -3,7 +3,10 @@ from typing import Optional
 from pygame.math import Vector2
 from my_safari_project.model.tourist import Tourist
 import random
+import math
 
+
+MAX_WAITING_TOURISTS = 30
 
 class TouristAI:
     def __init__(self, board, capital, feedback_callback=None):
@@ -31,8 +34,13 @@ class TouristAI:
             tourist.update(dt, self.board)
             tourist.detect_animals(self.board.animals, 5.0)
 
-            if tourist.in_jeep and tourist.in_jeep.at_path_end():
+            if (
+                tourist.in_jeep and
+                tourist.in_jeep.at_path_end() and
+                any(tourist.in_jeep.position.distance_to(exit_pos) < 1.0 for exit_pos in self.board.exits)
+            ):
                 tourist.exit_jeep()
+
 
             if tourist.is_done():
                 reward = 200 + 30 * len(tourist.seen_animals)
@@ -92,6 +100,10 @@ class TouristAI:
             return 1
 
     def _spawn_tourist(self):
+        if len(self.board.waiting_tourists) >= MAX_WAITING_TOURISTS:
+            return
+
+
         if not self.board.entrances:
             return
 
@@ -102,15 +114,16 @@ class TouristAI:
         for _ in range(batch_size):
             # Pick a random entrance for each tourist
             entrance = random.choice(self.board.entrances)
-            tourist = Tourist(self._next_tourist_id, Vector2(entrance), board=self.board)
+            offset_angle = random.uniform(0, 2 * math.pi)
+            offset_radius = random.uniform(0.3, 0.6)  # small radius
+            offset = Vector2(
+                offset_radius * math.cos(offset_angle),
+                offset_radius * math.sin(offset_angle)
+            )
+            tourist = Tourist(self._next_tourist_id, Vector2(entrance) + offset, board=self.board)
             self._next_tourist_id += 1
 
-            assigned = self._try_assign_tourist_to_jeep(tourist)
-            
-            if not assigned:
-                self.board.waiting_tourists.append(tourist)
-
-            self.board.tourists.append(tourist)
+            self.board.waiting_tourists.append(tourist)
 
     def _try_assign_tourist_to_jeep(self, tourist: Tourist) -> bool:
         available_jeeps = self.board.jeeps[:]
@@ -131,3 +144,4 @@ class TouristAI:
         for tourist in self.board.waiting_tourists[:]:
             if self._try_assign_tourist_to_jeep(tourist):
                 self.board.waiting_tourists.remove(tourist)
+                self.board.tourists.append(tourist)

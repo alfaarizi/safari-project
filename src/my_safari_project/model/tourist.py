@@ -75,37 +75,35 @@ class Tourist:
         return Vector2(nearest_exit)
 
     def update(self, dt: float, board):
+        if self.movement_state == "waiting":
+            return  # Do nothing until tourist enters jeep
+
         if self.movement_state == "in_jeep":
-            # Follow jeep position
             self.position = self.in_jeep.position
-            
+
         elif self.movement_state == "wandering":
             self.wander_timer += dt
-            
-            # Move towards wander target
+
             if self.target and self.position.distance_to(self.target) > 0.5:
                 direction = (self.target - self.position).normalize()
                 self.position += direction * self.speed * dt
             else:
-                # Reached target, get new wander target
                 if self.wander_timer < self.wander_duration:
                     self.target = self._get_wander_target()
                 else:
-                    # Finished wandering, start heading to exit
                     self.movement_state = "exiting"
                     self.target = self._get_exit_target()
-                    self.timer = 30.0  # Give 30 seconds to reach exit before despawning
-            
+                    self.timer = 30.0
+
         elif self.movement_state == "exiting":
             self.timer -= dt
-            
-            # Move towards exit
+
             if self.target and self.position.distance_to(self.target) > 0.5:
                 direction = (self.target - self.position).normalize()
                 self.position += direction * self.speed * dt
             else:
-                # Reached exit or timer expired
-                self.timer = 0.0  # Ready to despawn
+                self.timer = 0.0
+
 
     def detect_animals(self, animals: list[Animal], radius: float):
         """Detect animals within radius - works in all states except exiting."""
