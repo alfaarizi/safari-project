@@ -331,12 +331,11 @@ class BoardGUI:
                 px = ox + int((rx - min_x) * side)
                 py = oy + int((ry - min_y) * side)
                 screen.blit(pygame.transform.scale(self.ranger, (side, side)), (px, py))
-        # Poachers (only if visible to a ranger)
-        for p in self.board.poachers:
-            if p.visible:
-                px = ox + int((p.position.x - min_x) * side)
-                py = oy + int((p.position.y - min_y) * side)
-                screen.blit(pygame.transform.scale(self.poacher, (side, side)), (px, py))
+        # Poachers
+        for p in self.board.poachers:        
+            px = ox + int((p.position.x - min_x) * side)
+            py = oy + int((p.position.y - min_y) * side)
+            screen.blit(pygame.transform.scale(self.poacher, (side, side)), (px, py))
         # Tourists (only if not inside a jeep)
         tourist_size = int(side * 1.5)
         radius = max(3, int(side * 0.2))
