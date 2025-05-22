@@ -77,7 +77,7 @@ class Jeep:
 
         if self.at_path_end() and self.tourists:
             for exit_pos in self.board.exits:
-                if self.position.distance_to(exit_pos) < 3.0:
+                if self.position.distance_to(exit_pos) < 5.0:
                     for t in self.tourists[:]:
                         t.exit_jeep()
                     break
