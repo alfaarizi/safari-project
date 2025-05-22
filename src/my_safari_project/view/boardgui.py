@@ -256,7 +256,7 @@ class BoardGUI:
 
         # LAYER 4: Entrances and Exits
         for doors, is_entrance in [(self.board.entrances, True), (self.board.exits, False)]:
-            for e in doors[:4]:
+            for e in doors[:]:
                 if min_x <= e.x < max_x and min_y <= e.y < max_y:
                     road = next((r for r in self.board.roads if r.pos == e), None)
                     if road:
