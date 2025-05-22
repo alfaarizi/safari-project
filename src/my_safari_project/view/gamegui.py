@@ -601,79 +601,65 @@ class GameGUI:
 
         # 4) finally update the display
         pygame.display.flip()
+    
+    def _draw_box(self, text: str, x: int, y: int, color=(60,60,232), radius=4, right=False, width=None):
+        surf = self.font_medium.render(text, True, (255,255,255))
+        w = width or surf.get_width() + 20
+        rx = SCREEN_W - x - w if right else x
+        rect = pygame.Rect(rx, y, w, 30)
+        pygame.draw.rect(self.screen, color, rect, border_radius=radius)
+        pygame.draw.rect(self.screen, (255,255,255), rect, 2, border_radius=radius)
+        self.screen.blit(surf, surf.get_rect(center=rect.center))
+        return w
 
-    # ---------------- top bar ------------------------------------------------
+    # ---------------- top bar -------------------------------------------
     def _draw_top_bar(self):
-        margin, box_h, radius = 10, 30, 8
-
-        def box(text: str, x: int, *, right=False, col=(60,60,232)):
-            surf = self.font_medium.render(text, True, (255,255,255))
-            w = surf.get_width() + 20
-            rx = SCREEN_W - x - w if right else x
-            rect = pygame.Rect(rx, (TOP_BAR_H - box_h)//2, w, box_h)
-            pygame.draw.rect(self.screen, col, rect, border_radius=radius)
-            pygame.draw.rect(self.screen, (255,255,255), rect, 2, border_radius=radius)
-            self.screen.blit(surf, (rx+10, rect.y + (box_h - surf.get_height())//2))
-            return w
-
+        start_margin, margin, y = 20, 10, (TOP_BAR_H - 30) // 2
         pygame.draw.rect(self.screen, (60,70,90), (0,0,SCREEN_W,TOP_BAR_H))
-
-        x = margin
+        
+        # Left-aligned boxes
+        x = start_margin
         for txt in [f"Tourists: {len(self.control.board.tourists) + len(self.control.board.waiting_tourists)}",
+                    f"Rangers: {len(self.control.board.rangers)}",
+                    f"Poachers: {len(self.control.board.poachers)}"]:
+            x += self._draw_box(txt, x, y, radius=8) + margin
+        
+        # Right-aligned boxes
+        right_x = start_margin
+        for txt in [f"Capital: ${self.control.capital.getBalance():.0f}",
+                    f"Ponds: {len(self.control.board.ponds)}",
+                    f"Plants: {len(self.control.board.plants)}",
                     f"Animals: {len(self.control.board.animals)}"]:
-            x += box(txt, x) + margin
-        box(f"Capital: ${self.control.capital.getBalance():.0f}", margin,
-            right=True, col=(0,100,0))
+            color = (0,100,0) if "Capital" in txt else (180,0,0)
+            right_x += self._draw_box(txt, right_x, y, color=color, radius=8, right=True) + margin
 
     # ---------------- bottom bar -------------------------------------------
     def _draw_bottom_bar(self):
-        margin, oval_h = 20, 50
-
-        def oval(text: str, x: int):
-            surf = self.font_medium.render(text, True, (255,255,255))
-            ow = surf.get_width() + 40
-            rect = pygame.Rect(x, SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - oval_h)//2,
-                               ow, oval_h)
-            pygame.draw.ellipse(self.screen, (40,45,60), rect)
-            pygame.draw.ellipse(self.screen, (255,255,255), rect, 2)
-            self.screen.blit(surf, (rect.x + (ow - surf.get_width())//2,
-                                    rect.y + (oval_h - surf.get_height())//2))
-            return ow
-
-        pygame.draw.rect(self.screen, (60,70,90),
-                         (0, SCREEN_H - BOTTOM_BAR_H,
-                          SCREEN_W - SIDE_PANEL_W, BOTTOM_BAR_H))
-
+        start_margin, margin = 20, 10
+        pygame.draw.rect(self.screen, (60,70,90), (0, SCREEN_H - BOTTOM_BAR_H, SCREEN_W - SIDE_PANEL_W, BOTTOM_BAR_H))
+        
         date, time_s = self.control.timer.get_date_time()
-        game_time    = self.control.timer.get_game_time()
+        x, y = start_margin, SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - 30) // 2
+        
+        # Game stats
+        for k in list(self.control.timer.get_game_time().keys())[:4]:
+            x += self._draw_box(f"{k}: {self.control.timer.get_game_time()[k]}", x, y, color=(40,45,60)) + margin
+        
+        # Save button with hover
+        hover_color = (0,150,0) if pygame.Rect(x, y, 150, 30).collidepoint(pygame.mouse.get_pos()) else (40,90,140)
+        save_w = self._draw_box("Save Game", x, y, color=hover_color)
+        self.save_btn_rect = pygame.Rect(x, y, save_w, 30)
 
-        x = margin
-        for k in list(game_time.keys())[:4]:
-            x += oval(f"{k}: {game_time[k]}", x) + margin
-
-         # Save Game button
-        save_label = "Save Game"
-        surf = self.font_medium.render(save_label, True, (255, 255, 255))
-        sw = surf.get_width() + 30
-        sh = 40
-        save_x = x
-        save_y = SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - sh) // 2
-        self.save_btn_rect = pygame.Rect(save_x, save_y, sw, sh)
-
-        pygame.draw.ellipse(self.screen, (40, 90, 140), self.save_btn_rect)
-        pygame.draw.ellipse(self.screen, (255, 255, 255), self.save_btn_rect, 2)
-        self.screen.blit(surf, surf.get_rect(center=self.save_btn_rect.center))
-
-        x += sw + margin  # Shift for date/time blocks
-        box_y = SCREEN_H - BOTTOM_BAR_H + 4
-        box_x = SCREEN_W - SIDE_PANEL_W - 140
+        # Date/time blocks (stacked, right-aligned)
+        time_x = SCREEN_W - SIDE_PANEL_W - 120 - start_margin
+        start_y = SCREEN_H - BOTTOM_BAR_H + (BOTTOM_BAR_H - 64) // 2
+        
         for i, txt in enumerate((date, time_s)):
-            rect = pygame.Rect(box_x, box_y + i*34, 120, 30)
+            rect = pygame.Rect(time_x, start_y + i * 34, 120, 30)
             pygame.draw.rect(self.screen, (153,101,21), rect, border_radius=4)
             pygame.draw.rect(self.screen, (255,255,255), rect, 2, border_radius=4)
-            surf = self.font_medium.render(txt, True, (255,255,255))
-            self.screen.blit(surf, (rect.x + (120 - surf.get_width())//2,
-                                    rect.y + (30  - surf.get_height())//2))
+            self.screen.blit(self.font_medium.render(txt, True, (255,255,255)), 
+                            self.font_medium.render(txt, True, (255,255,255)).get_rect(center=rect.center))
 
     # ---------------- side panel -------------------------------------------
     def _draw_side_panel(self):
