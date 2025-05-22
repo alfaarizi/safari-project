@@ -45,21 +45,23 @@ def test_calculate_spawn_batch_size_high_diversity(ai, board):
 
 def test_spawn_tourist_adds_to_board(ai, board):
     ai._spawn_tourist()
-    assert len(board.tourists) > 0
-
-
-
-
+    assert len(board.waiting_tourists) > 0
 
 def test_update_moves_and_rewards_tourist(ai, board, capital):
     ai._spawn_tourist()
-    t = board.tourists[0]
-    t.movement_state = "exiting"
-    t.timer = 0.0
-    t.seen_animals.add(1)
+    assert len(board.waiting_tourists) > 0
+    
+    # Move the tourist to board.tourists (simulate assignment to jeep or direct addition)
+    tourist = board.waiting_tourists[0]
+    board.tourists.append(tourist)
+    
+    # Set tourist to exiting state for reward testing
+    tourist.movement_state = "exiting"
+    tourist.timer = 0.0
+    tourist.seen_animals.add(1)
     start_balance = capital.currentBalance
 
     ai.update(1.0)
 
     assert capital.currentBalance > start_balance
-    assert t not in board.tourists
+    assert tourist not in board.tourists
