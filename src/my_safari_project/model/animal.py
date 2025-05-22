@@ -125,7 +125,7 @@ class Animal(ABC, Generic[T]):
         return None
 
     def is_adult(self) -> bool:
-        return self.age >= (self.lifespan/2.0)
+        return self.age >= (self.lifespan/3.0)
     
 
     def kill(self):

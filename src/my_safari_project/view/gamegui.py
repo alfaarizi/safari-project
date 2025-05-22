@@ -547,7 +547,6 @@ class GameGUI:
         if self.drag_item_idx >= 0:
 
             name = self.shop_items[self.drag_item_idx]["name"].lower()
-            print(name)
             if name not in ["jeep", "straight v road", "straight h road"]:
                 img  = (getattr(self.board_gui, name) 
                 if name in ("plant", "pond", "ranger") 
