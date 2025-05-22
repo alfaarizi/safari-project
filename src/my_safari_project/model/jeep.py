@@ -76,11 +76,8 @@ class Jeep:
             return
 
         if self.at_path_end() and self.tourists:
-            for exit_pos in self.board.exits:
-                if self.position.distance_to(exit_pos) < 5.0:
-                    for t in self.tourists[:]:
-                        t.exit_jeep()
-                    break
+            for t in self.tourists[:]:
+                t.exit_jeep()
 
         next_point = self._path[self._path_index + 1]
         direction = next_point - self.position
@@ -107,7 +104,7 @@ class Jeep:
 
         # Pickup tourists
         for entrance in self.board.entrances:
-            if self.position.distance_to(entrance) < 1:
+            if self.position.distance_to(entrance) < 0.5:
                 for tourist in self.board.waiting_tourists[:]:
                     if len(self.tourists) < 4 and self.position.distance_to(tourist.position) < 1.0:
                         if tourist.enter_jeep(self):

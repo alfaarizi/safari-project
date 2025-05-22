@@ -482,7 +482,19 @@ class GameController:
         # Clear existing
         self.board.plants.clear()
         self.board.ponds.clear()
-        
+        # 1. Load all roads
+        self.board.roads.clear()
+        for rd in data["roads"]:
+            pos = Vector2(rd["x"], rd["y"])
+            road = Road(pos, RoadType[rd["type"]])
+            self.board.roads.append(road)
+            fx, fy = int(pos.x), int(pos.y)
+            self.board.fields[fy][fx].terrain_type = "ROAD"
+            self.board.fields[fy][fx].set_obstacle(True)
+
+        # 2. STITCH ROAD NETWORK properly
+        for road in self.board.roads:
+            self.board._stitch_into_network(road)
 
         self.board.jeeps.clear()
         jeep_count = data.get("jeep_count", 0)
@@ -522,9 +534,6 @@ class GameController:
                     # fallback: treat as waiting tourist if no jeep is available
                     tourist.movement_state = "waiting"
                     self.board.waiting_tourists.append(tourist)
-
-        self.wildlife_ai = WildlifeAI(self.board, self.capital, feedback_callback=self.game_gui._feedback)
-
 
 
 
