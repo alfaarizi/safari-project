@@ -43,3 +43,5 @@ If you have a script defined in your `pyproject.toml`, for example:
 then you can do:  
 `poetry run python3 src/my_safari_project/main.py`
 
+## Link to Full Project
+https://szofttech.inf.elte.hu/software-technology-2025/group-02/binary-brains
