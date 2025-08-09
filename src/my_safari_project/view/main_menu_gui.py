@@ -39,8 +39,8 @@ font_main = pygame.font.SysFont("Comic Sans MS", 36)
 font_small = pygame.font.SysFont("Comic Sans MS", 28)
 
 # Set screen dimensions to 1080x720
-WIDTH, HEIGHT = 1080, 720
-screen = pygame.display.set_mode((WIDTH, HEIGHT), pygame.RESIZABLE)
+WIDTH, HEIGHT = 1200, 800
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Safari Game Menu")
 clock = pygame.time.Clock()
 

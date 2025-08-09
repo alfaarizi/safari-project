@@ -12,6 +12,19 @@
 ## Overview
 This project simulates an **African Safari** environment where players can manage animals, tourists, jeeps, and more using Python and Pygame.
 
+## Preview
+
+<div align="center">
+  <img src="preview1.png" alt="Preview 1" height="200"/>
+  <img src="preview2.png" alt="Preview 2" height="200"/>
+</div>
+
+<div align="center">
+  <img src="preview3.png" alt="Preview 3" height="200"/>
+  <img src="preview4.png" alt="Preview 4" height="200"/>
+</div>
+
+
 ## Prerequisites
 - **Python 3.10+** installed on your machine  
 - **Poetry** (2.x or later)  
