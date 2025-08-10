@@ -9,7 +9,7 @@
 
 ---
 
-## Overview
+## About
 This project simulates an **African Safari** environment where players can manage animals, tourists, jeeps, and more using Python and Pygame.
 
 ## Preview
